@@ -13,7 +13,7 @@
     "package": "npm run build && electron-builder --win",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "test": "echo \"test script will be wired up in task: Application use-cases + unit-тесты\" && exit 1"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
@@ -33,6 +33,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "^5.5.4",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
   }
 }

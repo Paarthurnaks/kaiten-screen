@@ -77,9 +77,9 @@ Architecture. Домен (`src/domain`) не знает про Electron/Node. П
 <!-- Commit checkpoint: tasks 1-4 -->
 
 ### Phase 2: Domain & Application (чистая логика)
-- [ ] Task 5: Domain — сущности и value objects (TaskDraft, CaptureRegion, CapturedImage) (depends on 3)
-- [ ] Task 6: Domain — порты (ScreenCaptureProvider, SecretStore, KaitenClient, ConfigStore) (depends on 5)
-- [ ] Task 7: Application — use-cases + unit-тесты (CaptureAndCreateTask, LoadSettings, SaveSettings) (depends on 5, 6, 4)
+- [x] Task 5: Domain — сущности и value objects (TaskDraft, CaptureRegion, CapturedImage) (depends on 3)
+- [x] Task 6: Domain — порты (ScreenCaptureProvider, SecretStore, KaitenClient, ConfigStore) (depends on 5)
+- [x] Task 7: Application — use-cases + unit-тесты (CaptureAndCreateTask, LoadSettings, SaveSettings) (depends on 5, 6, 4)
 <!-- Commit checkpoint: tasks 5-7 -->
 
 ### Phase 3: Infrastructure adapters
