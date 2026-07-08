@@ -83,10 +83,11 @@ Architecture. Домен (`src/domain`) не знает про Electron/Node. П
 <!-- Commit checkpoint: tasks 5-7 -->
 
 ### Phase 3: Infrastructure adapters
-- [ ] Task 8: Infrastructure — Kaiten HTTP client (заглушка под уточнение API, TODO-маркеры) (depends on 6)
-- [ ] Task 9: Infrastructure — Electron safeStorage secret store (depends on 6)
-- [ ] Task 10: Infrastructure — JSON config store (depends on 6)
-- [ ] Task 11: Infrastructure — Windows screen capture adapter (overlay + desktopCapturer) (depends on 6)
+- [x] Task 8: Infrastructure — Kaiten HTTP client (заглушка под уточнение API, TODO-маркеры) (depends on 6)
+- [x] Task 9: Infrastructure — Electron safeStorage secret store (depends on 6)
+- [x] Task 10: Infrastructure — JSON config store (depends on 6)
+- [x] Task 11: Infrastructure — Windows screen capture adapter (overlay + desktopCapturer) (depends on 6) —
+  внутренний IPC-протокол overlay↔main вынесен в `shared/capture-overlay-protocol.ts`
 <!-- Commit checkpoint: tasks 8-11 -->
 
 ### Phase 4: Electron main process wiring
