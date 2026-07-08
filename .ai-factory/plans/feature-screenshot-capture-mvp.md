@@ -91,11 +91,16 @@ Architecture. Домен (`src/domain`) не знает про Electron/Node. П
 <!-- Commit checkpoint: tasks 8-11 -->
 
 ### Phase 4: Electron main process wiring
-- [ ] Task 12: Main — composition root (main/index.ts) (depends on 7, 8, 9, 10, 11)
-- [ ] Task 13: Main — глобальные хоткеи (depends on 12)
-- [ ] Task 14: Main — трей-иконка и меню (depends on 12)
-- [ ] Task 15: Main — управление окнами (overlay/форма/настройки) (depends on 12)
-- [ ] Task 16: IPC-контракт, хендлеры и preload (depends on 7, 12)
+- [x] Task 12: Main — composition root (main/index.ts) (depends on 7, 8, 9, 10, 11)
+- [x] Task 13: Main — глобальные хоткеи (depends on 12)
+- [x] Task 14: Main — трей-иконка и меню (depends on 12) — иконка сейчас плейсхолдер,
+  заменится в задаче "Упаковка Windows-инсталлятора"
+- [x] Task 15: Main — управление окнами (overlay/форма/настройки) (depends on 12) —
+  overlay уже управляется изнутри WindowsScreenCapture (задача 11); здесь — settings/task-form
+- [x] Task 16: IPC-контракт, хендлеры и preload (depends on 7, 12) — добавлен небольшой
+  use-case `ListKaitenOptions` (application/), не выделенный отдельной задачей в исходном
+  плане, но нужный, чтобы IPC-хендлеры не обращались к KaitenClient напрямую (по правилам
+  ARCHITECTURE.md)
 <!-- Commit checkpoint: tasks 12-16 -->
 
 ### Phase 5: Renderer UI
