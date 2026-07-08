@@ -58,14 +58,16 @@ function clearPendingCapture(): void {
   pendingCapture = null;
 }
 
-async function handleCaptureHotkeyTriggered(): Promise<void> {
+/** Захват региона -> показ формы задачи. Общая точка входа для хоткея и клика в трее
+ * (и для e2e-тестов, которым нужно программно запустить сценарий — см. tests/e2e/). */
+export async function triggerCaptureFlow(): Promise<void> {
   const result = await captureAndCreateTask.captureStep();
   if (!result) {
-    logger.debug("Main.handleCaptureHotkeyTriggered", "capture returned no result (cancelled)");
+    logger.debug("Main.triggerCaptureFlow", "capture returned no result (cancelled)");
     return;
   }
   pendingCapture = result;
-  logger.info("Main.handleCaptureHotkeyTriggered", "capture ready, opening task form", {
+  logger.info("Main.triggerCaptureFlow", "capture ready, opening task form", {
     width: result.region.width,
     height: result.region.height,
   });
@@ -74,18 +76,26 @@ async function handleCaptureHotkeyTriggered(): Promise<void> {
 
 function reregisterCaptureHotkey(accelerator: string): void {
   unregisterAllHotkeys(logger);
-  registerCaptureHotkey(accelerator, () => void handleCaptureHotkeyTriggered(), logger);
+  registerCaptureHotkey(accelerator, () => void triggerCaptureFlow(), logger);
 }
 
-app.whenReady().then(async () => {
+function applyAutostart(enabled: boolean): void {
+  app.setLoginItemSettings({ openAtLogin: enabled });
+  logger.info("Main.applyAutostart", "autostart setting applied", { enabled });
+}
+
+// Экспортируется, чтобы e2e-тесты (tests/e2e/) могли дождаться завершения
+// регистрации IPC-хендлеров перед взаимодействием с окнами.
+export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
   logger.info("Main.bootstrap", "app ready", { platform: process.platform, version: app.getVersion() });
 
   const config = await configStore.getConfig();
   reregisterCaptureHotkey(config.captureHotkey);
+  applyAutostart(config.autostart);
 
   createTray(
     {
-      onCapture: () => void handleCaptureHotkeyTriggered(),
+      onCapture: () => void triggerCaptureFlow(),
       onOpenSettings: () => showSettingsWindow(logger),
     },
     logger,
@@ -99,6 +109,7 @@ app.whenReady().then(async () => {
     getPendingCapture,
     clearPendingCapture,
     reregisterCaptureHotkey,
+    applyAutostart,
     logger,
   });
 });
@@ -107,10 +118,22 @@ app.on("will-quit", () => {
   unregisterAllHotkeys(logger);
 });
 
+// Приложение живёт в трее — закрытие окна формы/настроек не завершает процесс.
+// Выход — только через пункт "Выход" в трее (см. main/tray.ts).
 app.on("window-all-closed", () => {
-  // Временное поведение до задачи "Автозапуск и поведение свернуть в трей" — там
-  // приложение будет жить в трее вместо завершения процесса при закрытии окон.
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  logger.debug("Main.window-all-closed", "all windows closed, staying in tray");
 });
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __kaitenScreenE2e:
+    | { appReadyPromise: Promise<void>; saveSettings: SaveSettings; triggerCaptureFlow: () => Promise<void> }
+    | undefined;
+}
+
+// Playwright's electronApp.evaluate() не поддерживает require()/import() внутри eval —
+// поэтому нужные для e2e-тестов хуки выставляются через globalThis, а не через обычный
+// export+import модуля. Включается только при явном E2E_TEST_HOOKS=1 (см. tests/e2e/).
+if (process.env.E2E_TEST_HOOKS === "1") {
+  globalThis.__kaitenScreenE2e = { appReadyPromise, saveSettings, triggerCaptureFlow };
+}

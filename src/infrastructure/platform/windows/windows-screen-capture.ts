@@ -63,7 +63,7 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
         resizable: false,
         movable: false,
         webPreferences: {
-          preload: join(__dirname, "../preload/index.mjs"),
+          preload: join(__dirname, "../preload/index.cjs"),
         },
       });
 

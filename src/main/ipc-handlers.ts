@@ -26,6 +26,9 @@ export interface IpcHandlerDeps {
   /** Перерегистрирует глобальный хоткей захвата — вызывается, если пользователь
    * изменил captureHotkey в настройках, чтобы изменение подействовало без рестарта. */
   reregisterCaptureHotkey: (accelerator: string) => void;
+  /** Применяет настройку автозапуска на уровне ОС — вызывается, если пользователь
+   * изменил autostart в настройках. */
+  applyAutostart: (enabled: boolean) => void;
   logger: Logger;
 }
 
@@ -78,6 +81,9 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
       await deps.saveSettings.execute(input);
       if (input.config?.captureHotkey) {
         deps.reregisterCaptureHotkey(input.config.captureHotkey);
+      }
+      if (input.config?.autostart !== undefined) {
+        deps.applyAutostart(input.config.autostart);
       }
     },
   );

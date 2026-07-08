@@ -16,6 +16,12 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, "src/preload/index.ts") },
+        output: {
+          // Явно CJS (.cjs), а не ESM — sandboxed-preload в Electron не поддерживает
+          // ESM-скрипты, contextBridge.exposeInMainWorld молча не срабатывает иначе.
+          format: "cjs",
+          entryFileNames: "[name].cjs",
+        },
       },
     },
   },

@@ -112,13 +112,22 @@ Architecture. Домен (`src/domain`) не знает про Electron/Node. П
 <!-- Commit checkpoint: tasks 17-19 -->
 
 ### Phase 6: Устойчивость и упаковка
-- [ ] Task 20: Обработка сетевых ошибок без потери данных формы/скриншота (depends on 7, 18)
-- [ ] Task 21: Автозапуск при старте системы + "свернуть в трей" (depends on 14, 19)
-- [ ] Task 22: Упаковка Windows-инсталлятора (electron-builder) (depends on 12, 19)
+- [x] Task 20: Обработка сетевых ошибок без потери данных формы/скриншота (depends on 7, 18) —
+  поведение уже было заложено в задачах 7/16/18 (TaskForm не сбрасывает состояние при ошибке,
+  ipc-handlers чистит pendingCapture только при успехе); здесь добавлены тесты, закрывающие
+  этот контракт на уровне IPC-хендлера
+- [x] Task 21: Автозапуск при старте системы + "свернуть в трей" (depends on 14, 19)
+- [x] Task 22: Упаковка Windows-инсталлятора (electron-builder) (depends on 12, 19) —
+  build/icon.png (плейсхолдер) добавлен, electron-builder сам сконвертировал его в ICO;
+  `npm run package` собирает рабочий NSIS-инсталлятор
 <!-- Commit checkpoint: tasks 20-22 -->
 
 ### Phase 7: E2E тесты и финальная проверка
-- [ ] Task 23: E2E тест ключевого сценария (Playwright + `_electron`, мок Kaiten API) (depends on 18, 20)
+- [x] Task 23: E2E тест ключевого сценария (Playwright + `_electron`, мок Kaiten API) (depends on 18, 20) —
+  по ходу нашёлся и исправлен реальный баг: preload собирался в ESM (.mjs), а sandboxed-режим
+  Electron по умолчанию не поддерживает ESM preload — contextBridge молча не работал ни в одном
+  окне. Переключили сборку preload на CJS (.cjs) в electron.vite.config.ts. Добавлены 2 e2e-теста:
+  happy path и сетевая ошибка → повторная отправка
 - [ ] Task 24: Финальный прогон lint/typecheck/test/build (depends on 22, 23)
 <!-- Commit checkpoint: tasks 23-24 -->
 

@@ -27,7 +27,7 @@ export function showSettingsWindow(logger: Logger): BrowserWindow {
     width: 480,
     height: 560,
     title: "Kaiten Screen — Настройки",
-    webPreferences: { preload: join(__dirname, "../preload/index.mjs") },
+    webPreferences: { preload: join(__dirname, "../preload/index.cjs") },
   });
   loadRendererPage(settingsWindow, "settings");
   settingsWindow.on("closed", () => {
@@ -49,7 +49,7 @@ export function showTaskFormWindow(logger: Logger): BrowserWindow {
     width: 520,
     height: 640,
     title: "Kaiten Screen — Новая задача",
-    webPreferences: { preload: join(__dirname, "../preload/index.mjs") },
+    webPreferences: { preload: join(__dirname, "../preload/index.cjs") },
   });
   loadRendererPage(taskFormWindow, "task-form");
   taskFormWindow.on("closed", () => {
