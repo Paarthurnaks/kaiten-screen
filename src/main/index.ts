@@ -72,13 +72,16 @@ async function handleCaptureHotkeyTriggered(): Promise<void> {
   showTaskFormWindow(logger);
 }
 
+function reregisterCaptureHotkey(accelerator: string): void {
+  unregisterAllHotkeys(logger);
+  registerCaptureHotkey(accelerator, () => void handleCaptureHotkeyTriggered(), logger);
+}
+
 app.whenReady().then(async () => {
   logger.info("Main.bootstrap", "app ready", { platform: process.platform, version: app.getVersion() });
 
   const config = await configStore.getConfig();
-  registerCaptureHotkey(config.captureHotkey, () => {
-    void handleCaptureHotkeyTriggered();
-  }, logger);
+  reregisterCaptureHotkey(config.captureHotkey);
 
   createTray(
     {
@@ -95,6 +98,7 @@ app.whenReady().then(async () => {
     listKaitenOptions,
     getPendingCapture,
     clearPendingCapture,
+    reregisterCaptureHotkey,
     logger,
   });
 });

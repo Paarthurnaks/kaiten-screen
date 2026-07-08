@@ -23,6 +23,9 @@ export interface IpcHandlerDeps {
   listKaitenOptions: ListKaitenOptions;
   getPendingCapture: () => { region: CaptureRegion; image: CapturedImage } | null;
   clearPendingCapture: () => void;
+  /** Перерегистрирует глобальный хоткей захвата — вызывается, если пользователь
+   * изменил captureHotkey в настройках, чтобы изменение подействовало без рестарта. */
+  reregisterCaptureHotkey: (accelerator: string) => void;
   logger: Logger;
 }
 
@@ -73,6 +76,9 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     IPC_CHANNELS.saveSettings,
     async (_event, input: SaveSettingsInputDto): Promise<void> => {
       await deps.saveSettings.execute(input);
+      if (input.config?.captureHotkey) {
+        deps.reregisterCaptureHotkey(input.config.captureHotkey);
+      }
     },
   );
 

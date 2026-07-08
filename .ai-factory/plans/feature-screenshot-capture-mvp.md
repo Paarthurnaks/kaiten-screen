@@ -104,9 +104,11 @@ Architecture. Домен (`src/domain`) не знает про Electron/Node. П
 <!-- Commit checkpoint: tasks 12-16 -->
 
 ### Phase 5: Renderer UI
-- [ ] Task 17: Renderer — overlay выделения области (depends on 16)
-- [ ] Task 18: Renderer — форма создания задачи (depends on 16)
-- [ ] Task 19: Renderer — раздел настроек (depends on 16)
+- [x] Task 17: Renderer — overlay выделения области (depends on 16)
+- [x] Task 18: Renderer — форма создания задачи (depends on 16)
+- [x] Task 19: Renderer — раздел настроек (depends on 16) — заодно добавлена
+  перерегистрация глобального хоткея при сохранении настроек (main/ipc-handlers.ts),
+  иначе смена хоткея в UI не действовала бы без рестарта приложения
 <!-- Commit checkpoint: tasks 17-19 -->
 
 ### Phase 6: Устойчивость и упаковка
