@@ -1,9 +1,12 @@
 import { app, Menu, nativeImage, Tray } from "electron";
 import type { Logger } from "../domain/ports/logger";
 
-// TODO(упаковка): заменить на настоящую иконку приложения в задаче "Упаковка
-// Windows-инсталлятора" (build/icon.ico) — сейчас это плейсхолдер (сплошной квадрат
-// 16x16), чтобы иконка в трее реально отображалась уже сейчас.
+// TODO: build/icon.png (реальная иконка приложения, добавлена для electron-builder)
+// используется только electron-builder при сборке инсталлятора/exe — в runtime она
+// не бандлится и недоступна по пути отсюда. Чтобы трей показывал ту же иконку, нужно
+// либо скопировать её в выход electron-vite (например через resources/ + extraResources
+// в electron-builder.yml), либо явно завести отдельный ассет-пайплайн — не сделано в этом
+// плане. Пока трей использует свой плейсхолдер (сплошной квадрат 16x16).
 const PLACEHOLDER_ICON_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGPQztn8nxLMMGrAqAGjBgwXAwAwHUkf8/GuugAAAABJRU5ErkJggg==";
 

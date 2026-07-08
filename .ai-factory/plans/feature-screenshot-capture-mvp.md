@@ -128,7 +128,8 @@ Architecture. Домен (`src/domain`) не знает про Electron/Node. П
   Electron по умолчанию не поддерживает ESM preload — contextBridge молча не работал ни в одном
   окне. Переключили сборку preload на CJS (.cjs) в electron.vite.config.ts. Добавлены 2 e2e-теста:
   happy path и сетевая ошибка → повторная отправка
-- [ ] Task 24: Финальный прогон lint/typecheck/test/build (depends on 22, 23)
+- [x] Task 24: Финальный прогон lint/typecheck/test/build (depends on 22, 23) — все npm-скрипты
+  проверены (lint, typecheck, test, test:e2e, build, package, dev) — все проходят чисто
 <!-- Commit checkpoint: tasks 23-24 -->
 
 ## Примечания для /aif-implement
