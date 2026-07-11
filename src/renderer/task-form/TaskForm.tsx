@@ -199,6 +199,7 @@ export function TaskForm() {
         laneId,
         columnId: columnId || undefined,
         responsibleId: responsibleId || undefined,
+        spaceId: spaceId || undefined,
         properties: Object.keys(properties).length > 0 ? properties : undefined,
         participantIds: participantIds.length > 0 ? participantIds : undefined,
       });

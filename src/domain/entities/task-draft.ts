@@ -7,6 +7,13 @@ export interface TaskDraftInput {
   laneId: string;
   columnId?: string;
   responsibleId?: string;
+  /** Пространство доски — Kaiten не возвращает его в ответе на создание карточки,
+   * а ссылка на карточку в веб-интерфейсе Kaiten имеет вид
+   * `/space/{spaceId}/boards/card/{cardId}` и без spaceId её не построить (см.
+   * kaiten-http-client.ts createTask). Опционально, т.к. форма технически позволяет
+   * дойти до отправки без выбора пространства (доска/дорожка обязательны, а
+   * пространство — только промежуточный шаг каскада для их подгрузки). */
+  spaceId?: string;
   /** Пользовательские поля Kaiten: ключ "id_<propertyId>", значение — id варианта
    * (строка) для одиночного выбора или массив id для multiSelect-полей. */
   properties?: Record<string, string | string[]>;
@@ -22,6 +29,7 @@ export class TaskDraft {
     public readonly columnId?: string,
     public readonly responsibleId?: string,
     public readonly properties: Record<string, string | string[]> = {},
+    public readonly spaceId?: string,
   ) {}
 
   static create(input: TaskDraftInput): TaskDraft {
@@ -43,6 +51,7 @@ export class TaskDraft {
       input.columnId,
       input.responsibleId,
       input.properties ?? {},
+      input.spaceId,
     );
   }
 }

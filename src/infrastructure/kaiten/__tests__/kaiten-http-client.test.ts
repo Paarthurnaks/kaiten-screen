@@ -59,6 +59,34 @@ describe("KaitenHttpClient", () => {
     expect(init.headers.Authorization).toBe("Bearer secret-key");
   });
 
+  it("createTask строит ссылку на карточку в формате /space/{spaceId}/boards/card/{id}, если spaceId передан", async () => {
+    // Kaiten не возвращает url в ответе на создание карточки, а ссылка вида /cards/{id}
+    // (естественное на вид REST-предположение) на самом деле ведёт на 404 — подтверждено
+    // вживую на реальной установке Kaiten (см. buildCardUrl в kaiten-http-client.ts).
+    // Реальный формат — /space/{spaceId}/boards/card/{id}.
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: 42 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const draft = TaskDraft.create({ title: "Bug", boardId: "b1", laneId: "l1", spaceId: "s1" });
+
+    const result = await client.createTask(draft);
+
+    expect(result.url).toBe("https://mycompany.kaiten.ru/space/s1/boards/card/42");
+  });
+
+  it("createTask падает обратно на /cards/{id}, если spaceId не передан", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: 42 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const draft = TaskDraft.create({ title: "Bug", boardId: "b1", laneId: "l1" });
+
+    const result = await client.createTask(draft);
+
+    expect(result.url).toBe("https://mycompany.kaiten.ru/cards/42");
+  });
+
   it("createTask включает column_id/responsible_id/properties, только если они заданы, и приводит values properties к массиву чисел", async () => {
     // Kaiten валидирует values пользовательских полей как "массив integer | null" — независимо
     // от multi_select, подтверждено двумя разными реальными ответами 400 от alphacore.kaiten.ru

@@ -93,7 +93,9 @@ test.describe("Screenshot -> Kaiten task (e2e)", () => {
     await taskFormPage.getByRole("button", { name: "Создать задачу" }).click();
 
     await expect(taskFormPage.getByText("Задача создана")).toBeVisible();
-    await expect(taskFormPage.getByRole("link", { name: /cards\/42/ })).toBeVisible();
+    // Ссылка строится как /space/{spaceId}/boards/card/{id} (не /cards/{id} — см.
+    // buildCardUrl в kaiten-http-client.ts), spaceId=1 приходит из выбранного "Test Space".
+    await expect(taskFormPage.getByRole("link", { name: /space\/1\/boards\/card\/42/ })).toBeVisible();
 
     expect(server.requests.some((r) => r.method === "POST" && r.url === "/api/latest/cards")).toBe(true);
     // Реальный Kaiten API требует PUT для attach-file-to-card (подтверждено curl-запросом к

@@ -40,6 +40,9 @@ export interface SubmitTaskInputDto {
   laneId: string;
   columnId?: string;
   responsibleId?: string;
+  /** Нужно для построения корректной ссылки на созданную карточку — см.
+   * infrastructure/kaiten/kaiten-http-client.ts createTask. */
+  spaceId?: string;
   properties?: Record<string, string | string[]>;
   participantIds?: string[];
 }

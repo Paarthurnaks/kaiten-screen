@@ -57,6 +57,16 @@ function normalizeBaseUrl(domain: string): string {
   return withProtocol.replace(/\/+$/, "");
 }
 
+// Kaiten не возвращает ссылку на карточку в ответе на её создание — собираем сами.
+// Реальный формат ссылки в веб-интерфейсе Kaiten — `/space/{spaceId}/boards/card/{cardId}`,
+// НЕ `/cards/{cardId}` (последнее выглядит как более "REST-ный" путь, но ведёт на 404 —
+// подтверждено вживую на реальной установке Kaiten). Без spaceId (например, если форма
+// отправлена без выбора пространства) fallback на /cards/{id} лучше, чем ничего, хотя он
+// тоже 404 — по крайней мере содержит id карточки.
+function buildCardUrl(base: string, spaceId: string | undefined, cardId: string): string {
+  return spaceId ? `${base}/space/${spaceId}/boards/card/${cardId}` : `${base}/cards/${cardId}`;
+}
+
 async function readErrorBody(response: Response): Promise<string> {
   try {
     return await response.text();
@@ -135,9 +145,10 @@ export class KaitenHttpClient implements KaitenClient {
       ENDPOINTS.createCard(),
       body,
     );
+    const base = normalizeBaseUrl((await this.configStore.getConfig()).kaitenDomain);
     return {
       id: String(responseBody.id),
-      url: responseBody.url ?? `${normalizeBaseUrl((await this.configStore.getConfig()).kaitenDomain)}/cards/${responseBody.id}`,
+      url: responseBody.url ?? buildCardUrl(base, draft.spaceId, String(responseBody.id)),
     };
   }
 

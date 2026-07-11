@@ -20,7 +20,10 @@ const CUSTOM_PROPERTY = {
   condition: "active",
   selectValues: [{ id: 11, value: "DEV", condition: "active" }],
 };
-const CREATED_TASK = { id: 42, url: "http://kaiten.e2e.local/cards/42" };
+// Реальный Kaiten API не возвращает url в ответе на создание карточки (см. examples.md
+// и buildCardUrl в kaiten-http-client.ts) — раньше здесь ошибочно был захардкожен url,
+// из-за чего e2e-тест не проверял реальный путь построения ссылки.
+const CREATED_TASK = { id: 42 };
 
 export interface MockKaitenServerOptions {
   /** Сколько первых запросов на создание карточки нужно провалить с 500 (для теста ретрая). */
