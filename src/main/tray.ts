@@ -1,26 +1,20 @@
-import { app, Menu, nativeImage, Tray } from "electron";
+import { app, Menu, Tray } from "electron";
 import type { Logger } from "../domain/ports/logger";
-
-// TODO: build/icon.png (реальная иконка приложения, добавлена для electron-builder)
-// используется только electron-builder при сборке инсталлятора/exe — в runtime она
-// не бандлится и недоступна по пути отсюда. Чтобы трей показывал ту же иконку, нужно
-// либо скопировать её в выход electron-vite (например через resources/ + extraResources
-// в electron-builder.yml), либо явно завести отдельный ассет-пайплайн — не сделано в этом
-// плане. Пока трей использует свой плейсхолдер (сплошной квадрат 16x16).
-const PLACEHOLDER_ICON_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGPQztn8nxLMMGrAqAGjBgwXAwAwHUkf8/GuugAAAABJRU5ErkJggg==";
+import { createAppIcon } from "./app-icon";
 
 export interface TrayActions {
   onCapture: () => void;
   onOpenSettings: () => void;
+  onCheckForUpdates: () => void;
 }
 
 let trayInstance: Tray | null = null;
 
-/** Создаёт иконку в трее с меню: захват, настройки, выход. */
+/** Создаёт иконку в трее: левый клик — сразу захват области, правый клик — меню
+ * (захват/настройки/выход). На Windows setContextMenu() биндит меню на оба клика,
+ * поэтому используем click/right-click вручную вместо setContextMenu(). */
 export function createTray(actions: TrayActions, logger: Logger): Tray {
-  const icon = nativeImage.createFromDataURL(`data:image/png;base64,${PLACEHOLDER_ICON_BASE64}`);
-  const tray = new Tray(icon);
+  const tray = new Tray(createAppIcon());
   tray.setToolTip("Kaiten Screen");
 
   const menu = Menu.buildFromTemplate([
@@ -38,6 +32,13 @@ export function createTray(actions: TrayActions, logger: Logger): Tray {
         actions.onOpenSettings();
       },
     },
+    {
+      label: "Проверить обновления",
+      click: () => {
+        logger.debug("Tray.menu", "check for updates clicked");
+        actions.onCheckForUpdates();
+      },
+    },
     { type: "separator" },
     {
       label: "Выход",
@@ -47,7 +48,15 @@ export function createTray(actions: TrayActions, logger: Logger): Tray {
       },
     },
   ]);
-  tray.setContextMenu(menu);
+
+  tray.on("click", () => {
+    logger.debug("Tray.click", "left click — capture");
+    actions.onCapture();
+  });
+  tray.on("right-click", () => {
+    logger.debug("Tray.click", "right click — menu");
+    tray.popUpContextMenu(menu);
+  });
 
   trayInstance = tray;
   logger.info("Tray.createTray", "tray icon created");

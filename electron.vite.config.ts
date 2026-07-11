@@ -33,6 +33,8 @@ export default defineConfig({
           captureOverlay: resolve(__dirname, "src/renderer/capture-overlay/index.html"),
           taskForm: resolve(__dirname, "src/renderer/task-form/index.html"),
           settings: resolve(__dirname, "src/renderer/settings/index.html"),
+          postCaptureChoice: resolve(__dirname, "src/renderer/post-capture-choice/index.html"),
+          attachTask: resolve(__dirname, "src/renderer/attach-task/index.html"),
         },
       },
     },

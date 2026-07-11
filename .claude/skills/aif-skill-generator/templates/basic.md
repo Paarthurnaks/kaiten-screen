@@ -20,10 +20,10 @@ Brief description of what this skill provides.
 ## Guidelines
 
 ### Guideline 1
-Explanation and examples.
+Explanation and examples.md.
 
 ### Guideline 2
-Explanation and examples.
+Explanation and examples.md.
 
 ## Examples
 

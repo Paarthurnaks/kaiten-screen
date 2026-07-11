@@ -171,7 +171,7 @@ Generate:
   "phase": "A",
   "current_step": "PLAN",
   "task": {
-    "prompt": "OpenAPI 3.1 spec + DDD notes + JSON examples",
+    "prompt": "OpenAPI 3.1 spec + DDD notes + JSON examples.md",
     "ideal_result": "..."
   },
   "criteria": {

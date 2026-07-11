@@ -4,6 +4,11 @@ out/
 release/
 .env
 .env.*
+kaiten-screen.local-config.json
+# Экспорт настроек из диалога "Сохранить в файл..." (Settings) может содержать реальный
+# API-ключ в открытом виде — на всякий случай игнорируем любое имя с этим префиксом,
+# если экспорт случайно попадёт в корень проекта.
+kaiten-screen*config*.json
 *.log
 test-results/
 playwright-report/

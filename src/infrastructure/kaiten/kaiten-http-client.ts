@@ -2,7 +2,11 @@ import type {
   KaitenClient,
   KaitenSpace,
   KaitenBoard,
+  KaitenColumn,
   KaitenLane,
+  KaitenUser,
+  KaitenCustomProperty,
+  KaitenSearchCard,
   KaitenCreatedTask,
 } from "../../domain/ports/kaiten-client";
 import type { TaskDraft } from "../../domain/entities/task-draft";
@@ -11,18 +15,42 @@ import type { ConfigStore } from "../../domain/ports/config-store";
 import type { SecretStore } from "../../domain/ports/secret-store";
 import type { Logger } from "../../domain/ports/logger";
 
-// TODO(kaiten-api): точная схема эндпоинтов/полей ещё не подтверждена владельцем продукта.
-// Пути ниже — рабочее предположение по типовому REST API Kaiten (`/api/latest/...`).
-// Как только придут реальные примеры запросов/ответов — поменять только константы и
-// map*-функции ниже, остальной класс (авторизация, обработка ошибок, логирование) менять не нужно.
+// Схема эндпоинтов и полей подтверждена реальными ответами `alphacore.kaiten.ru`
+// (см. examples.md в корне репозитория за подробностями и примерами curl/ответов).
 const API_PREFIX = "/api/latest";
 const ENDPOINTS = {
   createCard: () => `${API_PREFIX}/cards`,
   attachFile: (cardId: string) => `${API_PREFIX}/cards/${cardId}/files`,
+  addCardMember: (cardId: string) => `${API_PREFIX}/cards/${cardId}/members`,
   listSpaces: () => `${API_PREFIX}/spaces`,
   listBoards: (spaceId: string) => `${API_PREFIX}/spaces/${spaceId}/boards`,
+  listColumns: (boardId: string) => `${API_PREFIX}/boards/${boardId}/columns`,
   listLanes: (boardId: string) => `${API_PREFIX}/boards/${boardId}/lanes`,
+  listUsers: () => `${API_PREFIX}/users?limit=100`,
+  listCustomProperties: () => `${API_PREFIX}/company/custom-properties?include_values=true`,
+  searchCards: (query: string) => `${API_PREFIX}/cards?query=${encodeURIComponent(query)}&limit=20`,
 };
+
+interface RawUser {
+  id: number | string;
+  full_name: string;
+}
+
+interface RawCustomPropertyValue {
+  id: number | string;
+  value: string;
+  condition: string;
+}
+
+interface RawCustomProperty {
+  id: number | string;
+  name: string;
+  type: string;
+  multi_select: boolean;
+  show_on_facade: boolean;
+  condition: string;
+  selectValues?: RawCustomPropertyValue[];
+}
 
 function normalizeBaseUrl(domain: string): string {
   const withProtocol = /^https?:\/\//.test(domain) ? domain : `https://${domain}`;
@@ -78,17 +106,34 @@ export class KaitenHttpClient implements KaitenClient {
   }
 
   async createTask(draft: TaskDraft): Promise<KaitenCreatedTask> {
-    // TODO(kaiten-api): подтвердить точные имена полей запроса (title/description/board_id/column_id?).
+    const body: Record<string, unknown> = {
+      title: draft.title,
+      description: draft.description,
+      board_id: draft.boardId,
+      lane_id: draft.laneId,
+    };
+    if (draft.columnId) body.column_id = draft.columnId;
+    if (draft.responsibleId) body.responsible_id = draft.responsibleId;
+    if (Object.keys(draft.properties).length > 0) {
+      // Kaiten валидирует значения select-полей как "массив integer | null" — подтверждено
+      // двумя разными реальными ответами 400 от alphacore.kaiten.ru: для одного поля с
+      // multi_select=true отклонялся массив строк ("[0] should be integer"), для другого
+      // с multi_select=false отклонялось скалярное число ("should be array"). Т.е. формат
+      // на проводе — всегда массив чисел, независимо от multi_select (тот влияет только на
+      // то, сколько значений можно выбрать в UI Kaiten, не на формат запроса). Домен/UI
+      // хранят одиночный выбор скаляром — оборачиваем в массив здесь, на границе с HTTP.
+      body.properties = Object.fromEntries(
+        Object.entries(draft.properties).map(([key, value]) => [
+          key,
+          (Array.isArray(value) ? value : [value]).map(Number),
+        ]),
+      );
+    }
+
     const responseBody = await this.request<{ id: number | string; url?: string }>(
       "POST",
       ENDPOINTS.createCard(),
-      {
-        title: draft.title,
-        description: draft.description,
-        board_id: draft.boardId,
-        lane_id: draft.laneId,
-        ...draft.additionalFields,
-      },
+      body,
     );
     return {
       id: String(responseBody.id),
@@ -104,13 +149,13 @@ export class KaitenHttpClient implements KaitenClient {
     }
 
     const url = `${normalizeBaseUrl(config.kaitenDomain)}${ENDPOINTS.attachFile(taskId)}`;
-    this.logger.debug("KaitenHttpClient.attachFile", `POST ${ENDPOINTS.attachFile(taskId)}`, { taskId });
+    this.logger.debug("KaitenHttpClient.attachFile", `PUT ${ENDPOINTS.attachFile(taskId)}`, { taskId });
 
     const formData = new FormData();
     formData.append("file", new Blob([Uint8Array.from(image.buffer)], { type: image.mimeType }), "screenshot.png");
 
     const response = await fetch(url, {
-      method: "POST",
+      method: "PUT",
       headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
     });
@@ -122,6 +167,12 @@ export class KaitenHttpClient implements KaitenClient {
     }
 
     this.logger.info("KaitenHttpClient.attachFile", "upload succeeded", { taskId });
+  }
+
+  async addCardMember(taskId: string, userId: string): Promise<void> {
+    // user_id, как и properties, должен быть настоящим числом в JSON — строка отклоняется
+    // валидацией Kaiten (см. комментарий про properties в createTask выше).
+    await this.request("POST", ENDPOINTS.addCardMember(taskId), { user_id: Number(userId) });
   }
 
   async listSpaces(): Promise<KaitenSpace[]> {
@@ -137,11 +188,46 @@ export class KaitenHttpClient implements KaitenClient {
     return items.map((item) => ({ id: String(item.id), title: item.title, spaceId }));
   }
 
+  async listColumns(boardId: string): Promise<KaitenColumn[]> {
+    const items = await this.request<Array<{ id: number | string; title: string }>>(
+      "GET",
+      ENDPOINTS.listColumns(boardId),
+    );
+    return items.map((item) => ({ id: String(item.id), title: item.title, boardId }));
+  }
+
   async listLanes(boardId: string): Promise<KaitenLane[]> {
     const items = await this.request<Array<{ id: number | string; title: string }>>(
       "GET",
       ENDPOINTS.listLanes(boardId),
     );
     return items.map((item) => ({ id: String(item.id), title: item.title, boardId }));
+  }
+
+  async listUsers(): Promise<KaitenUser[]> {
+    const items = await this.request<RawUser[]>("GET", ENDPOINTS.listUsers());
+    return items.map((item) => ({ id: String(item.id), fullName: item.full_name }));
+  }
+
+  async listCustomProperties(): Promise<KaitenCustomProperty[]> {
+    const items = await this.request<RawCustomProperty[]>("GET", ENDPOINTS.listCustomProperties());
+    return items
+      .filter((item) => item.type === "select" && item.condition === "active" && item.show_on_facade)
+      .map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        multiSelect: item.multi_select,
+        values: (item.selectValues ?? [])
+          .filter((value) => value.condition === "active")
+          .map((value) => ({ id: String(value.id), label: value.value })),
+      }));
+  }
+
+  async searchCards(query: string): Promise<KaitenSearchCard[]> {
+    const items = await this.request<Array<{ id: number | string; title: string }>>(
+      "GET",
+      ENDPOINTS.searchCards(query),
+    );
+    return items.map((item) => ({ id: String(item.id), title: item.title }));
   }
 }

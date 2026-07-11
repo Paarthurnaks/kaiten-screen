@@ -15,7 +15,18 @@ const kaitenScreenApi: KaitenScreenApi = {
   saveSettings: (input: SaveSettingsInputDto) => ipcRenderer.invoke(IPC_CHANNELS.saveSettings, input),
   listSpaces: () => ipcRenderer.invoke(IPC_CHANNELS.listSpaces),
   listBoards: (spaceId: string) => ipcRenderer.invoke(IPC_CHANNELS.listBoards, spaceId),
+  listColumns: (boardId: string) => ipcRenderer.invoke(IPC_CHANNELS.listColumns, boardId),
   listLanes: (boardId: string) => ipcRenderer.invoke(IPC_CHANNELS.listLanes, boardId),
+  listUsers: () => ipcRenderer.invoke(IPC_CHANNELS.listUsers),
+  listCustomProperties: () => ipcRenderer.invoke(IPC_CHANNELS.listCustomProperties),
+  searchCards: (query: string) => ipcRenderer.invoke(IPC_CHANNELS.searchCards, query),
+  chooseCreateTask: () => ipcRenderer.invoke(IPC_CHANNELS.chooseCreateTask),
+  chooseAttachExisting: () => ipcRenderer.invoke(IPC_CHANNELS.chooseAttachExisting),
+  cancelPendingCapture: () => ipcRenderer.invoke(IPC_CHANNELS.cancelPendingCapture),
+  attachToExistingCard: (cardId: string) => ipcRenderer.invoke(IPC_CHANNELS.attachToExistingCard, cardId),
+  backToChoice: () => ipcRenderer.invoke(IPC_CHANNELS.backToChoice),
+  exportProjectConfig: () => ipcRenderer.invoke(IPC_CHANNELS.exportProjectConfig),
+  importProjectConfig: () => ipcRenderer.invoke(IPC_CHANNELS.importProjectConfig),
 };
 
 /** Отдельный узкий API только для окна capture-overlay (см. shared/capture-overlay-protocol.ts). */

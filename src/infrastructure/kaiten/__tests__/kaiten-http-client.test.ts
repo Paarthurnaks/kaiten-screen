@@ -12,8 +12,11 @@ function createNoopLogger(): Logger {
 function createConfigStore(overrides: Partial<AppConfig> = {}): ConfigStore {
   const config: AppConfig = {
     kaitenDomain: "mycompany.kaiten.ru",
+    defaultSpaceId: null,
     defaultBoardId: null,
+    defaultColumnId: null,
     defaultLaneId: null,
+    defaultResponsibleId: null,
     captureHotkey: "CommandOrControl+Shift+K",
     autostart: false,
     ...overrides,
@@ -56,6 +59,33 @@ describe("KaitenHttpClient", () => {
     expect(init.headers.Authorization).toBe("Bearer secret-key");
   });
 
+  it("createTask включает column_id/responsible_id/properties, только если они заданы, и приводит values properties к массиву чисел", async () => {
+    // Kaiten валидирует values пользовательских полей как "массив integer | null" — независимо
+    // от multi_select, подтверждено двумя разными реальными ответами 400 от alphacore.kaiten.ru
+    // (см. комментарий в kaiten-http-client.ts createTask). Одиночный выбор (скаляр в домене)
+    // оборачивается в одноэлементный массив; строковые id приводятся к числам.
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: 42 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const draft = TaskDraft.create({
+      title: "Bug",
+      boardId: "b1",
+      laneId: "l1",
+      columnId: "c1",
+      responsibleId: "u1",
+      properties: { id_1: "11", id_2: ["21", "22"] },
+    });
+
+    await client.createTask(draft);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+    const body = JSON.parse(init.body) as Record<string, unknown>;
+    expect(body.column_id).toBe("c1");
+    expect(body.responsible_id).toBe("u1");
+    expect(body.properties).toEqual({ id_1: [11], id_2: [21, 22] });
+  });
+
   it("createTask бросает ошибку при не-2xx ответе", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse(401, { message: "unauthorized" })));
 
@@ -87,7 +117,24 @@ describe("KaitenHttpClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://mycompany.kaiten.ru/api/latest/cards/42/files");
+    // Реальный Kaiten API требует PUT для attach-file-to-card (подтверждено curl-запросом
+    // к alphacore.kaiten.ru) — раньше здесь ошибочно стоял POST.
+    expect(init.method).toBe("PUT");
     expect(init.body).toBeInstanceOf(FormData);
+  });
+
+  it("addCardMember шлёт POST с числовым user_id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: 7 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    await client.addCardMember("42", "7");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+    expect(url).toBe("https://mycompany.kaiten.ru/api/latest/cards/42/members");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ user_id: 7 });
   });
 
   it("attachFile бросает ошибку при не-2xx ответе", async () => {
@@ -107,5 +154,71 @@ describe("KaitenHttpClient", () => {
     const boards = await client.listBoards("space-1");
 
     expect(boards).toEqual([{ id: "1", title: "Board A", spaceId: "space-1" }]);
+  });
+
+  it("listColumns маппит ответ и подставляет boardId", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse(200, [{ id: 100, title: "Очередь" }])));
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const columns = await client.listColumns("board-1");
+
+    expect(columns).toEqual([{ id: "100", title: "Очередь", boardId: "board-1" }]);
+  });
+
+  it("listUsers маппит full_name в fullName", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(mockResponse(200, [{ id: 777, full_name: "Максим Шевченко" }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const users = await client.listUsers();
+
+    expect(users).toEqual([{ id: "777", fullName: "Максим Шевченко" }]);
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe("https://mycompany.kaiten.ru/api/latest/users?limit=100");
+  });
+
+  it("listCustomProperties фильтрует по select/active/show_on_facade и маппит selectValues", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        mockResponse(200, [
+          {
+            id: 1,
+            name: "Окружение",
+            type: "select",
+            multi_select: false,
+            show_on_facade: true,
+            condition: "active",
+            selectValues: [
+              { id: 11, value: "DEV", condition: "active" },
+              { id: 12, value: "PROD (архив)", condition: "inactive" },
+            ],
+          },
+          { id: 2, name: "Заказчик", type: "string", multi_select: false, show_on_facade: true, condition: "active" },
+          { id: 3, name: "Скрытое", type: "select", multi_select: false, show_on_facade: false, condition: "active" },
+        ]),
+      ),
+    );
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const properties = await client.listCustomProperties();
+
+    expect(properties).toEqual([
+      { id: "1", name: "Окружение", multiSelect: false, values: [{ id: "11", label: "DEV" }] },
+    ]);
+  });
+
+  it("searchCards кодирует query и маппит id/title", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, [{ id: 66730627, title: "Статус класса" }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+    const cards = await client.searchCards("Статус класса");
+
+    expect(cards).toEqual([{ id: "66730627", title: "Статус класса" }]);
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe("https://mycompany.kaiten.ru/api/latest/cards?query=%D0%A1%D1%82%D0%B0%D1%82%D1%83%D1%81%20%D0%BA%D0%BB%D0%B0%D1%81%D1%81%D0%B0&limit=20");
   });
 });

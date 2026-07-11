@@ -9,6 +9,8 @@ export interface SubmitTaskResult {
   task: KaitenCreatedTask;
   /** true, если задача создана, но вложение прикрепить не удалось (частичный успех). */
   attachmentFailed: boolean;
+  /** true, если задача создана, но добавить хотя бы одного участника не удалось. */
+  membersFailed: boolean;
 }
 
 /**
@@ -36,7 +38,11 @@ export class CaptureAndCreateTask {
     return result;
   }
 
-  async submitStep(draftInput: TaskDraftInput, image: CapturedImage): Promise<SubmitTaskResult> {
+  async submitStep(
+    draftInput: TaskDraftInput,
+    image: CapturedImage,
+    participantIds: string[] = [],
+  ): Promise<SubmitTaskResult> {
     // TaskDraft.create бросает DomainValidationError при некорректных данных —
     // пусть исключение всплывает к вызывающему коду (UI показывает ошибку валидации).
     const draft = TaskDraft.create(draftInput);
@@ -48,16 +54,42 @@ export class CaptureAndCreateTask {
     const task = await this.kaiten.createTask(draft);
     this.logger.info("CaptureAndCreateTask.submitStep", "task created", { taskId: task.id });
 
+    let membersFailed = false;
+    if (participantIds.length > 0) {
+      const results = await Promise.allSettled(
+        participantIds.map((userId) => this.kaiten.addCardMember(task.id, userId)),
+      );
+      membersFailed = results.some((result) => result.status === "rejected");
+      if (membersFailed) {
+        this.logger.warn("CaptureAndCreateTask.submitStep", "task created but some members failed to add", {
+          taskId: task.id,
+        });
+      } else {
+        this.logger.info("CaptureAndCreateTask.submitStep", "members added", {
+          taskId: task.id,
+          count: participantIds.length,
+        });
+      }
+    }
+
     try {
       await this.kaiten.attachFile(task.id, image);
       this.logger.info("CaptureAndCreateTask.submitStep", "attachment uploaded", { taskId: task.id });
-      return { task, attachmentFailed: false };
+      return { task, attachmentFailed: false, membersFailed };
     } catch (err) {
       this.logger.warn("CaptureAndCreateTask.submitStep", "task created but attachment failed", {
         taskId: task.id,
         error: String(err),
       });
-      return { task, attachmentFailed: true };
+      return { task, attachmentFailed: true, membersFailed };
     }
+  }
+
+  /** Прикрепляет уже захваченный скриншот к существующей карточке (экран «Прикрепить
+   * к существующей»), минуя создание новой задачи. */
+  async attachToExistingCard(cardId: string, image: CapturedImage): Promise<void> {
+    this.logger.debug("CaptureAndCreateTask.attachToExistingCard", "attaching to existing card", { cardId });
+    await this.kaiten.attachFile(cardId, image);
+    this.logger.info("CaptureAndCreateTask.attachToExistingCard", "attachment uploaded", { cardId });
   }
 }

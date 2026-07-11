@@ -8,7 +8,18 @@ export interface MockKaitenServer {
 
 const SPACE = { id: 1, title: "Test Space" };
 const BOARD = { id: 10, title: "Test Board" };
+const COLUMN = { id: 1000, title: "Test Column" };
 const LANE = { id: 100, title: "Test Lane" };
+const USER = { id: 7, full_name: "Test User" };
+const CUSTOM_PROPERTY = {
+  id: 1,
+  name: "Окружение",
+  type: "select",
+  multi_select: false,
+  show_on_facade: true,
+  condition: "active",
+  selectValues: [{ id: 11, value: "DEV", condition: "active" }],
+};
 const CREATED_TASK = { id: 42, url: "http://kaiten.e2e.local/cards/42" };
 
 export interface MockKaitenServerOptions {
@@ -39,10 +50,19 @@ export function startMockKaitenServer(options: MockKaitenServerOptions = {}): Pr
       send(200, CREATED_TASK);
       return;
     }
-    if (req.method === "POST" && /^\/api\/latest\/cards\/.+\/files$/.test(req.url ?? "")) {
+    if (req.method === "GET" && /^\/api\/latest\/cards(\?|$)/.test(req.url ?? "")) {
+      send(200, [{ id: 66730627, title: "Пример найденной задачи" }]);
+      return;
+    }
+    if (req.method === "PUT" && /^\/api\/latest\/cards\/.+\/files$/.test(req.url ?? "")) {
       // Тело — multipart/form-data со скриншотом; для мока достаточно подтвердить приём.
       req.resume();
       req.on("end", () => send(200, {}));
+      return;
+    }
+    if (req.method === "POST" && /^\/api\/latest\/cards\/.+\/members$/.test(req.url ?? "")) {
+      req.resume();
+      req.on("end", () => send(200, { id: USER.id, full_name: USER.full_name }));
       return;
     }
     if (req.method === "GET" && req.url === "/api/latest/spaces") {
@@ -53,8 +73,20 @@ export function startMockKaitenServer(options: MockKaitenServerOptions = {}): Pr
       send(200, [BOARD]);
       return;
     }
+    if (req.method === "GET" && /^\/api\/latest\/boards\/.+\/columns$/.test(req.url ?? "")) {
+      send(200, [COLUMN]);
+      return;
+    }
     if (req.method === "GET" && /^\/api\/latest\/boards\/.+\/lanes$/.test(req.url ?? "")) {
       send(200, [LANE]);
+      return;
+    }
+    if (req.method === "GET" && /^\/api\/latest\/users(\?|$)/.test(req.url ?? "")) {
+      send(200, [USER]);
+      return;
+    }
+    if (req.method === "GET" && /^\/api\/latest\/company\/custom-properties(\?|$)/.test(req.url ?? "")) {
+      send(200, [CUSTOM_PROPERTY]);
       return;
     }
 

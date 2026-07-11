@@ -68,24 +68,39 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
       });
 
       let settled = false;
+      let pendingRegion: CaptureRegion | null = null;
+
+      // Закрытие BrowserWindow асинхронно на уровне ОС — если снимать скриншот сразу
+      // после overlay.close(), компоситор Windows иногда ещё не убрал прозрачное окно
+      // с экрана, и в кадр попадают его пунктирная рамка/тулбар/затемнение. Поэтому
+      // ждём реального события "closed" и добавляем небольшую паузу перед resolve().
+      const finish = (): void => {
+        setTimeout(() => resolve(pendingRegion), 80);
+      };
+
       const onSelected = (_event: unknown, payload: CaptureOverlayRegionPayload): void => {
         if (settled) return;
         settled = true;
-        cleanup();
-        resolve(CaptureRegion.create(payload.x, payload.y, payload.width, payload.height));
+        pendingRegion = CaptureRegion.create(payload.x, payload.y, payload.width, payload.height);
+        removeIpcListeners();
+        if (overlay.isDestroyed()) {
+          finish();
+        } else {
+          overlay.close();
+        }
       };
       const onCancelled = (): void => {
         if (settled) return;
         settled = true;
-        cleanup();
-        resolve(null);
-      };
-      const cleanup = (): void => {
-        ipcMain.removeListener(CAPTURE_OVERLAY_CHANNELS.regionSelected, onSelected);
-        ipcMain.removeListener(CAPTURE_OVERLAY_CHANNELS.cancelled, onCancelled);
+        pendingRegion = null;
+        removeIpcListeners();
         if (!overlay.isDestroyed()) {
           overlay.close();
         }
+      };
+      const removeIpcListeners = (): void => {
+        ipcMain.removeListener(CAPTURE_OVERLAY_CHANNELS.regionSelected, onSelected);
+        ipcMain.removeListener(CAPTURE_OVERLAY_CHANNELS.cancelled, onCancelled);
       };
 
       ipcMain.on(CAPTURE_OVERLAY_CHANNELS.regionSelected, onSelected);
@@ -94,8 +109,14 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
       overlay.on("closed", () => {
         if (!settled) {
           settled = true;
-          ipcMain.removeListener(CAPTURE_OVERLAY_CHANNELS.regionSelected, onSelected);
-          ipcMain.removeListener(CAPTURE_OVERLAY_CHANNELS.cancelled, onCancelled);
+          pendingRegion = null;
+          removeIpcListeners();
+        }
+        // Отмена (cancel/Esc/закрытие окна) резолвится сразу null — пауза нужна только
+        // перед снятием скриншота, см. finish().
+        if (pendingRegion) {
+          finish();
+        } else {
           resolve(null);
         }
       });

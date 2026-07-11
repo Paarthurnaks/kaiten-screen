@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../shared/theme.css";
-import { CaptureOverlay } from "./CaptureOverlay";
+import { AttachTask } from "./AttachTask";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <CaptureOverlay />
+    <AttachTask />
   </StrictMode>,
 );

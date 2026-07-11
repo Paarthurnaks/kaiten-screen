@@ -79,9 +79,9 @@ PREPARE materializes the `rule.check` instructions (human-readable) from each ru
       "expected": "Endpoint definition present in artifact"
     },
     {
-      "rule_id": "a.completeness.examples",
+      "rule_id": "a.completeness.examples.md",
       "type": "content",
-      "search": "\"example\":|examples:",
+      "search": "\"example\":|examples.md:",
       "expected": "At least one JSON example per endpoint"
     }
   ]
@@ -121,7 +121,7 @@ Uses artifact from PRODUCE and checks from PREPARE. Spawns parallel `Task` agent
   "rule_results": [
     { "id": "a.correctness.endpoints", "verdict": "fail", "details": "..." },
     { "id": "a.style.naming", "verdict": "warn", "details": "..." },
-    { "id": "a.completeness.examples", "verdict": "pass", "details": "..." }
+    { "id": "a.completeness.examples.md", "verdict": "pass", "details": "..." }
   ]
 }
 ```

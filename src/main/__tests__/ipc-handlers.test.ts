@@ -54,6 +54,8 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       },
       reregisterCaptureHotkey: vi.fn(),
       applyAutostart: vi.fn(),
+      exportProjectConfig: vi.fn(),
+      importProjectConfig: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -80,6 +82,8 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       clearPendingCapture: vi.fn(),
       reregisterCaptureHotkey: vi.fn(),
       applyAutostart: vi.fn(),
+      exportProjectConfig: vi.fn(),
+      importProjectConfig: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -101,6 +105,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       submitStep: vi.fn().mockResolvedValue({
         task: { id: "1", url: "https://kaiten.example/1" },
         attachmentFailed: true,
+        membersFailed: false,
       }),
     } as unknown as CaptureAndCreateTask;
 
@@ -115,13 +120,20 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       },
       reregisterCaptureHotkey: vi.fn(),
       applyAutostart: vi.fn(),
+      exportProjectConfig: vi.fn(),
+      importProjectConfig: vi.fn(),
       logger: createNoopLogger(),
     });
 
     const submitHandler = handlers.get(IPC_CHANNELS.submitTask);
     const result = await submitHandler!({}, { title: "Bug", boardId: "b1", laneId: "l1" });
 
-    expect(result).toEqual({ taskId: "1", taskUrl: "https://kaiten.example/1", attachmentFailed: true });
+    expect(result).toEqual({
+      taskId: "1",
+      taskUrl: "https://kaiten.example/1",
+      attachmentFailed: true,
+      membersFailed: false,
+    });
     expect(pending).toBeNull();
   });
 });

@@ -1,9 +1,12 @@
-import { app } from "electron";
+import { app, BrowserWindow, Menu } from "electron";
 import { join } from "node:path";
 import { registerCaptureHotkey, unregisterAllHotkeys } from "./hotkeys";
 import { createTray } from "./tray";
-import { showSettingsWindow, showTaskFormWindow } from "./windows";
+import { showPostCaptureChoiceWindow, showSettingsWindow } from "./windows";
 import { registerIpcHandlers } from "./ipc-handlers";
+import { exportConfigToFile, importConfigFromFile } from "./config-file-transfer";
+import { seedConfigFromProjectFileIfEmpty } from "./project-config-seed";
+import { checkForUpdatesManually, setupAutoUpdater } from "./auto-updater";
 import { createFileLogger } from "../infrastructure/logging/file-logger";
 import { JsonConfigStore } from "../infrastructure/config/json-config-store";
 import { ElectronSafeStorage } from "../infrastructure/secrets/electron-safe-storage";
@@ -20,6 +23,18 @@ import type { CapturedImage } from "../domain/entities/captured-image";
 // Composition root (см. ARCHITECTURE.md): единственное место, где конкретные
 // адаптеры создаются и внедряются в use-cases. Domain/application ничего не знают
 // об Electron/fs — это единственный модуль, который их связывает.
+
+// Без явного имени Electron определяет его по-разному в зависимости от способа
+// запуска: `electron .` (как делает electron-vite dev) читает "name" из package.json
+// ("kaiten-screen"), а `electron out/main/index.js` (прямой запуск собранного файла)
+// не находит корень приложения и падает на дефолтное "Electron". Это два РАЗНЫХ
+// userData-каталога (AppData/Roaming/kaiten-screen и AppData/Roaming/Electron) —
+// настройки, сохранённые в одном режиме запуска, не видны в другом. Фиксируем имя
+// явно, до первого app.getPath, чтобы userData был одним и тем же всегда.
+// В e2e (E2E_TEST_HOOKS=1) — отдельное имя, чтобы прогон тестов не затирал реальные
+// настройки/API-ключ разработчика в общем userData (mock-домен/ключ иначе остаются
+// там после каждого `npm run test:e2e`).
+app.setName(process.env.E2E_TEST_HOOKS === "1" ? "kaiten-screen-e2e" : "kaiten-screen");
 
 const userDataDir = app.getPath("userData");
 const logger = createFileLogger(join(userDataDir, "logs"));
@@ -67,11 +82,11 @@ export async function triggerCaptureFlow(): Promise<void> {
     return;
   }
   pendingCapture = result;
-  logger.info("Main.triggerCaptureFlow", "capture ready, opening task form", {
+  logger.info("Main.triggerCaptureFlow", "capture ready, opening post-capture choice", {
     width: result.region.width,
     height: result.region.height,
   });
-  showTaskFormWindow(logger);
+  showPostCaptureChoiceWindow(logger);
 }
 
 function reregisterCaptureHotkey(accelerator: string): void {
@@ -84,10 +99,33 @@ function applyAutostart(enabled: boolean): void {
   logger.info("Main.applyAutostart", "autostart setting applied", { enabled });
 }
 
+async function exportProjectConfig(window: BrowserWindow | undefined): Promise<string | null> {
+  return exportConfigToFile(window, configStore, secretStore, logger);
+}
+
+async function importProjectConfig(window: BrowserWindow | undefined): Promise<boolean> {
+  const applied = await importConfigFromFile(window, configStore, secretStore, logger);
+  if (applied) {
+    const config = await configStore.getConfig();
+    reregisterCaptureHotkey(config.captureHotkey);
+    applyAutostart(config.autostart);
+  }
+  return applied;
+}
+
 // Экспортируется, чтобы e2e-тесты (tests/e2e/) могли дождаться завершения
 // регистрации IPC-хендлеров перед взаимодействием с окнами.
 export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
   logger.info("Main.bootstrap", "app ready", { platform: process.platform, version: app.getVersion() });
+
+  // Приложение не использует File/Edit/View и т.п. — это системное меню Electron
+  // по умолчанию только занимает место и сбивает с толку.
+  Menu.setApplicationMenu(null);
+
+  const seeded = await seedConfigFromProjectFileIfEmpty(configStore, secretStore, logger);
+  if (seeded) {
+    logger.info("Main.bootstrap", "seeded settings from project-level config file (first run)");
+  }
 
   const config = await configStore.getConfig();
   reregisterCaptureHotkey(config.captureHotkey);
@@ -97,9 +135,12 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
     {
       onCapture: () => void triggerCaptureFlow(),
       onOpenSettings: () => showSettingsWindow(logger),
+      onCheckForUpdates: () => checkForUpdatesManually(logger),
     },
     logger,
   );
+
+  setupAutoUpdater(logger);
 
   registerIpcHandlers({
     captureAndCreateTask,
@@ -110,6 +151,8 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
     clearPendingCapture,
     reregisterCaptureHotkey,
     applyAutostart,
+    exportProjectConfig,
+    importProjectConfig,
     logger,
   });
 });

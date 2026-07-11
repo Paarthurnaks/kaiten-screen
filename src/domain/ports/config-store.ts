@@ -1,15 +1,21 @@
 export interface AppConfig {
   kaitenDomain: string;
+  defaultSpaceId: string | null;
   defaultBoardId: string | null;
+  defaultColumnId: string | null;
   defaultLaneId: string | null;
+  defaultResponsibleId: string | null;
   captureHotkey: string;
   autostart: boolean;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   kaitenDomain: "",
+  defaultSpaceId: null,
   defaultBoardId: null,
+  defaultColumnId: null,
   defaultLaneId: null,
+  defaultResponsibleId: null,
   captureHotkey: "CommandOrControl+Shift+K",
   autostart: false,
 };

@@ -1,16 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface Point {
+interface Rect {
   x: number;
   y: number;
+  width: number;
+  height: number;
 }
 
+type Corner = "nw" | "ne" | "sw" | "se";
+type Phase = "idle" | "dragging" | "selected";
+
 const MIN_SELECTION_SIZE = 4;
+const TOOLBAR_HEIGHT = 48;
+const TOOLBAR_GAP = 12;
+const HANDLE_SIZE = 9;
+
+const CORNERS: { corner: Corner; cursor: string }[] = [
+  { corner: "nw", cursor: "nwse-resize" },
+  { corner: "ne", cursor: "nesw-resize" },
+  { corner: "sw", cursor: "nesw-resize" },
+  { corner: "se", cursor: "nwse-resize" },
+];
+
+function isTooSmall(rect: Rect): boolean {
+  return rect.width < MIN_SELECTION_SIZE || rect.height < MIN_SELECTION_SIZE;
+}
 
 export function CaptureOverlay() {
-  const [start, setStart] = useState<Point | null>(null);
-  const [current, setCurrent] = useState<Point | null>(null);
-  const isDragging = useRef(false);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [rect, setRect] = useState<Rect | null>(null);
+  const dragOrigin = useRef<{ x: number; y: number } | null>(null);
+  const resizeCorner = useRef<Corner | null>(null);
+  const resizeOrigin = useRef<Rect | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -22,83 +43,279 @@ export function CaptureOverlay() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleMouseDown = useCallback((event: React.MouseEvent) => {
-    isDragging.current = true;
-    setStart({ x: event.clientX, y: event.clientY });
-    setCurrent({ x: event.clientX, y: event.clientY });
-  }, []);
+  const handleContainerMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (phase === "selected") return; // выделение уже подтверждается через тулбар/ручки
+      dragOrigin.current = { x: event.clientX, y: event.clientY };
+      setRect({ x: event.clientX, y: event.clientY, width: 0, height: 0 });
+      setPhase("dragging");
+    },
+    [phase],
+  );
 
-  const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if (!isDragging.current) return;
-    setCurrent({ x: event.clientX, y: event.clientY });
-  }, []);
+  const handleContainerMouseMove = useCallback(
+    (event: React.MouseEvent) => {
+      if (phase === "dragging" && dragOrigin.current) {
+        const origin = dragOrigin.current;
+        setRect({
+          x: Math.min(origin.x, event.clientX),
+          y: Math.min(origin.y, event.clientY),
+          width: Math.abs(event.clientX - origin.x),
+          height: Math.abs(event.clientY - origin.y),
+        });
+      } else if (phase === "selected" && resizeCorner.current && resizeOrigin.current) {
+        const origin = resizeOrigin.current;
+        const corner = resizeCorner.current;
+        let { x, y, width, height } = origin;
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDragging.current || !start || !current) return;
-    isDragging.current = false;
-
-    const x = Math.min(start.x, current.x);
-    const y = Math.min(start.y, current.y);
-    const width = Math.abs(current.x - start.x);
-    const height = Math.abs(current.y - start.y);
-
-    if (width < MIN_SELECTION_SIZE || height < MIN_SELECTION_SIZE) {
-      // Слишком маленькое выделение — считаем случайным кликом, ждём новой попытки.
-      setStart(null);
-      setCurrent(null);
-      return;
-    }
-
-    window.captureOverlay.reportRegionSelected({ x, y, width, height });
-  }, [start, current]);
-
-  const rect =
-    start && current
-      ? {
-          left: Math.min(start.x, current.x),
-          top: Math.min(start.y, current.y),
-          width: Math.abs(current.x - start.x),
-          height: Math.abs(current.y - start.y),
+        if (corner === "nw" || corner === "sw") {
+          const right = origin.x + origin.width;
+          x = Math.min(event.clientX, right - MIN_SELECTION_SIZE);
+          width = right - x;
+        } else {
+          width = Math.max(MIN_SELECTION_SIZE, event.clientX - origin.x);
         }
-      : null;
+        if (corner === "nw" || corner === "ne") {
+          const bottom = origin.y + origin.height;
+          y = Math.min(event.clientY, bottom - MIN_SELECTION_SIZE);
+          height = bottom - y;
+        } else {
+          height = Math.max(MIN_SELECTION_SIZE, event.clientY - origin.y);
+        }
+        setRect({ x, y, width, height });
+      }
+    },
+    [phase],
+  );
+
+  const handleContainerMouseUp = useCallback(() => {
+    if (phase === "dragging") {
+      dragOrigin.current = null;
+      if (!rect || isTooSmall(rect)) {
+        setRect(null);
+        setPhase("idle");
+      } else {
+        setPhase("selected");
+      }
+    } else if (resizeCorner.current) {
+      resizeCorner.current = null;
+      resizeOrigin.current = null;
+    }
+  }, [phase, rect]);
+
+  const startResize = useCallback(
+    (corner: Corner) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!rect) return;
+      resizeCorner.current = corner;
+      resizeOrigin.current = rect;
+    },
+    [rect],
+  );
+
+  const handleRedo = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    setRect(null);
+    setPhase("idle");
+  }, []);
+
+  const handleFullscreen = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    setRect({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight });
+    setPhase("selected");
+  }, []);
+
+  const handleDone = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!rect || isTooSmall(rect)) return;
+      window.captureOverlay.reportRegionSelected(rect);
+    },
+    [rect],
+  );
+
+  const handleCancel = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    window.captureOverlay.reportCancelled();
+  }, []);
+
+  const showDimensionLabel = rect && (phase === "dragging" || phase === "selected") && !isTooSmall(rect);
+
+  let toolbarTop = 0;
+  let toolbarLeft = 0;
+  if (rect) {
+    const belowFits = rect.y + rect.height + TOOLBAR_GAP + TOOLBAR_HEIGHT <= window.innerHeight;
+    toolbarTop = belowFits ? rect.y + rect.height + TOOLBAR_GAP : rect.y - TOOLBAR_GAP - TOOLBAR_HEIGHT;
+    toolbarLeft = rect.x + rect.width / 2;
+  }
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, cursor: "crosshair", background: "rgba(0, 0, 0, 0.25)" }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      style={{
+        position: "fixed",
+        inset: 0,
+        overflow: "hidden",
+        cursor: phase === "selected" ? "default" : "crosshair",
+        background: rect ? "transparent" : "rgba(0, 0, 0, 0.25)",
+      }}
+      onMouseDown={handleContainerMouseDown}
+      onMouseMove={handleContainerMouseMove}
+      onMouseUp={handleContainerMouseUp}
     >
-      {rect && (
+      {rect && !isTooSmall(rect) && (
         <div
           style={{
             position: "absolute",
-            left: rect.left,
-            top: rect.top,
+            left: rect.x,
+            top: rect.y,
             width: rect.width,
             height: rect.height,
-            border: "2px solid #2b6cb3",
-            background: "rgba(43, 108, 179, 0.15)",
             boxSizing: "border-box",
+            outline: "1.5px dashed var(--ks-accent)",
+            boxShadow: "0 0 0 2000px rgba(0, 0, 0, 0.55)",
           }}
-        />
+        >
+          {showDimensionLabel && (
+            <div
+              className="ks-chip-mono"
+              style={{
+                position: "absolute",
+                top: rect.y > TOOLBAR_HEIGHT ? -32 : 8,
+                left: 0,
+                color: "var(--ks-text)",
+              }}
+            >
+              {Math.round(rect.width)} × {Math.round(rect.height)}
+            </div>
+          )}
+
+          {phase === "selected" &&
+            CORNERS.map(({ corner, cursor }) => (
+              <div
+                key={corner}
+                onMouseDown={startResize(corner)}
+                style={{
+                  position: "absolute",
+                  width: HANDLE_SIZE,
+                  height: HANDLE_SIZE,
+                  borderRadius: 2,
+                  background: "var(--ks-accent)",
+                  cursor,
+                  left: corner === "nw" || corner === "sw" ? -HANDLE_SIZE / 2 : undefined,
+                  right: corner === "ne" || corner === "se" ? -HANDLE_SIZE / 2 : undefined,
+                  top: corner === "nw" || corner === "ne" ? -HANDLE_SIZE / 2 : undefined,
+                  bottom: corner === "sw" || corner === "se" ? -HANDLE_SIZE / 2 : undefined,
+                }}
+              />
+            ))}
+        </div>
       )}
-      <div
-        style={{
-          position: "fixed",
-          top: 12,
-          left: "50%",
-          transform: "translateX(-50%)",
-          color: "#fff",
-          fontFamily: "sans-serif",
-          fontSize: 13,
-          background: "rgba(0, 0, 0, 0.5)",
-          padding: "4px 10px",
-          borderRadius: 4,
-        }}
-      >
-        Выделите область — Esc для отмены
-      </div>
+
+      {phase === "selected" && rect && (
+        <div
+          style={{
+            position: "absolute",
+            left: toolbarLeft,
+            top: toolbarTop,
+            transform: "translateX(-50%)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "var(--ks-bg-chip)",
+            border: "1px solid var(--ks-border-strong)",
+            borderRadius: 12,
+            padding: 6,
+            boxShadow: "0 12px 24px -8px rgba(0,0,0,0.5)",
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <ToolbarButton title="Отмена" onClick={handleCancel}>
+            ✕
+          </ToolbarButton>
+          <ToolbarDivider />
+          <ToolbarButton title="Во весь экран" onClick={handleFullscreen}>
+            ⛶
+          </ToolbarButton>
+          <ToolbarButton title="Заново" onClick={handleRedo}>
+            ↺
+          </ToolbarButton>
+          <ToolbarDivider />
+          <button
+            type="button"
+            onClick={handleDone}
+            style={{
+              height: 36,
+              padding: "0 16px",
+              borderRadius: 8,
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--ks-accent)",
+              color: "var(--ks-accent-contrast)",
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: "pointer",
+              fontFamily: "var(--font-sans)",
+            }}
+          >
+            ✓ Готово
+          </button>
+        </div>
+      )}
+
+      {phase === "idle" && (
+        <div
+          className="ks-note"
+          style={{
+            position: "fixed",
+            top: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            color: "var(--ks-text-secondary)",
+          }}
+        >
+          Выделите область экрана ·{" "}
+          <span className="ks-chip-mono" style={{ padding: "1px 6px" }}>
+            Esc
+          </span>{" "}
+          — отмена
+        </div>
+      )}
     </div>
   );
+}
+
+function ToolbarButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: (event: React.MouseEvent) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="button"
+      title={title}
+      onClick={onClick}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--ks-text-secondary)",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ToolbarDivider() {
+  return <div style={{ width: 1, height: 20, background: "var(--ks-border-strong)" }} />;
 }

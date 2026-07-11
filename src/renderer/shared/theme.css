@@ -1,0 +1,404 @@
+/* Общая тема рендерер-окон Kaiten Screen, по дизайну "Скриншотер для Kaiten"
+   (claude.ai/design). Токены — тёмная oklch-палитра с зелёным акцентом. */
+
+:root {
+  --ks-bg: oklch(0.14 0.008 250);
+  --ks-bg-elevated: oklch(0.17 0.01 250);
+  --ks-bg-subtle: oklch(0.2 0.012 250);
+  --ks-bg-chip: oklch(0.22 0.013 250);
+
+  --ks-border: oklch(0.28 0.012 250);
+  --ks-border-strong: oklch(0.32 0.014 250);
+
+  --ks-text: oklch(0.92 0.005 250);
+  --ks-text-secondary: oklch(0.75 0.008 250);
+  --ks-text-muted: oklch(0.6 0.01 250);
+  --ks-text-faint: oklch(0.5 0.01 250);
+
+  --ks-accent: oklch(0.6 0.15 165);
+  --ks-accent-contrast: oklch(0.12 0.03 165);
+  --ks-accent-soft: oklch(0.6 0.15 165 / 0.35);
+  --ks-accent-soft-border: oklch(0.6 0.15 165 / 0.6);
+
+  --ks-danger: oklch(0.62 0.19 25);
+  --ks-danger-text: oklch(0.75 0.16 25);
+  --ks-warning-text: oklch(0.75 0.12 70);
+  --ks-success-text: oklch(0.65 0.14 165);
+
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  /* Фон намеренно не задаётся здесь: окно оверлея захвата должно оставаться
+     прозрачным (см. capture-overlay/index.html), а окна-карточки (задача,
+     настройки, выбор действия) красят фон сами через класс .ks-card. */
+  color: var(--ks-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+#root {
+  height: 100%;
+}
+
+::selection {
+  background: var(--ks-accent-soft);
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ---- окно / карточка ---- */
+
+.ks-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ks-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--ks-bg-elevated);
+  height: 100%;
+}
+
+.ks-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--ks-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.ks-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ks-text);
+}
+
+.ks-card-close {
+  background: none;
+  border: none;
+  color: var(--ks-text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+
+.ks-card-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ks-card-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--ks-border-strong);
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ks-section-title {
+  font-size: 12px;
+  color: var(--ks-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ks-divider {
+  border: none;
+  border-top: 1px solid var(--ks-border);
+  margin: 4px 0 0;
+}
+
+/* ---- поля форм ---- */
+
+.ks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.ks-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ks-label {
+  font-size: 12.5px;
+  color: var(--ks-text-muted);
+  font-weight: 600;
+}
+
+.ks-input,
+.ks-select,
+.ks-textarea {
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--ks-bg-subtle);
+  border: 1px solid var(--ks-border);
+  color: var(--ks-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  width: 100%;
+}
+
+.ks-input:focus,
+.ks-select:focus,
+.ks-textarea:focus {
+  outline: none;
+  border-color: var(--ks-accent-soft-border);
+}
+
+.ks-input::placeholder,
+.ks-textarea::placeholder {
+  color: var(--ks-text-faint);
+}
+
+.ks-textarea {
+  min-height: 90px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.ks-input:disabled,
+.ks-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- кнопки ---- */
+
+.ks-btn {
+  padding: 11px 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.ks-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ks-btn-primary {
+  background: var(--ks-accent);
+  color: var(--ks-accent-contrast);
+  font-weight: 700;
+}
+
+.ks-btn-secondary {
+  background: var(--ks-bg-chip);
+  border-color: var(--ks-border-strong);
+  color: var(--ks-text-secondary);
+}
+
+.ks-btn-ghost {
+  background: transparent;
+  color: var(--ks-text-faint);
+}
+
+.ks-btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+.ks-btn-row .ks-btn {
+  flex: 1;
+}
+
+/* ---- пилюли (кастомные поля/теги) ---- */
+
+.ks-pill-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ks-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--ks-bg-chip);
+  color: var(--ks-text-muted);
+  border: 1.5px solid var(--ks-border-strong);
+  cursor: pointer;
+}
+
+.ks-pill-active {
+  background: oklch(0.32 0.09 95);
+  color: oklch(0.9 0.06 95);
+  border-color: oklch(0.6 0.13 95);
+}
+
+/* ---- переключатель ---- */
+
+.ks-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.ks-toggle-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.ks-toggle-label-title {
+  font-size: 13.5px;
+  color: var(--ks-text);
+}
+
+.ks-toggle-label-subtitle {
+  font-size: 12px;
+  color: var(--ks-text-muted);
+}
+
+.ks-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--ks-border);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: none;
+}
+
+.ks-toggle::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ks-text-muted);
+  top: 2px;
+  left: 2px;
+  transition: left 0.12s ease, background 0.12s ease;
+}
+
+.ks-toggle:checked {
+  background: var(--ks-accent);
+}
+
+.ks-toggle:checked::after {
+  left: 20px;
+  background: oklch(0.95 0.005 250);
+}
+
+/* ---- прочее ---- */
+
+.ks-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid var(--ks-bg-elevated);
+  margin-right: -8px;
+  background: oklch(0.4 0.05 260);
+  color: oklch(0.9 0.01 260);
+}
+
+.ks-avatar-add {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ks-bg-chip);
+  border: 1.5px dashed var(--ks-border-strong);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ks-text-muted);
+  cursor: pointer;
+}
+
+.ks-chip-mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ks-text-secondary);
+  background: var(--ks-bg-chip);
+  border: 1px solid var(--ks-border-strong);
+  padding: 6px 10px;
+  border-radius: 7px;
+}
+
+.ks-status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.ks-status-dot::before {
+  content: "●";
+  font-size: 10px;
+}
+
+.ks-status-dot-ok {
+  color: var(--ks-success-text);
+}
+
+.ks-status-dot-error {
+  color: var(--ks-danger-text);
+}
+
+.ks-error-text {
+  color: var(--ks-danger-text);
+  font-size: 13px;
+  margin: 0;
+}
+
+.ks-success-text {
+  color: var(--ks-success-text);
+  font-size: 13px;
+  margin: 0;
+}
+
+.ks-muted-text {
+  color: var(--ks-text-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.ks-note {
+  font-size: 12.5px;
+  color: var(--ks-text-muted);
+  background: var(--ks-bg-subtle);
+  border: 1px solid var(--ks-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}

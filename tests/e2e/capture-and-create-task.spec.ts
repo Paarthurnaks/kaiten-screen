@@ -50,6 +50,12 @@ async function captureAndFillTaskForm(electronApp: ElectronApplication): Promise
       .reportRegionSelected({ x: 100, y: 100, width: 220, height: 160 });
   });
 
+  // После захвата теперь сначала открывается экран выбора действия (см. windows.ts:
+  // showPostCaptureChoiceWindow) — выбираем "Создать новую задачу", чтобы попасть в форму.
+  const choicePage = await electronApp.waitForEvent("window");
+  await choicePage.waitForLoadState("domcontentloaded");
+  await choicePage.getByRole("button", { name: /Создать новую задачу/ }).click();
+
   const taskFormPage = await electronApp.waitForEvent("window");
   await taskFormPage.waitForLoadState("domcontentloaded");
 
@@ -90,7 +96,9 @@ test.describe("Screenshot -> Kaiten task (e2e)", () => {
     await expect(taskFormPage.getByRole("link", { name: /cards\/42/ })).toBeVisible();
 
     expect(server.requests.some((r) => r.method === "POST" && r.url === "/api/latest/cards")).toBe(true);
-    expect(server.requests.some((r) => r.method === "POST" && /\/files$/.test(r.url))).toBe(true);
+    // Реальный Kaiten API требует PUT для attach-file-to-card (подтверждено curl-запросом к
+    // alphacore.kaiten.ru) — было POST.
+    expect(server.requests.some((r) => r.method === "PUT" && /\/files$/.test(r.url))).toBe(true);
 
     await electronApp.close();
   });

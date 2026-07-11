@@ -5,8 +5,11 @@ export interface TaskDraftInput {
   description?: string;
   boardId: string;
   laneId: string;
-  /** Прочие поля Kaiten (приоритет, теги и т.п.) — состав уточняется по мере интеграции с API. */
-  additionalFields?: Record<string, unknown>;
+  columnId?: string;
+  responsibleId?: string;
+  /** Пользовательские поля Kaiten: ключ "id_<propertyId>", значение — id варианта
+   * (строка) для одиночного выбора или массив id для multiSelect-полей. */
+  properties?: Record<string, string | string[]>;
 }
 
 /** Черновик задачи Kaiten, заполняемый пользователем в форме после захвата скриншота. */
@@ -16,7 +19,9 @@ export class TaskDraft {
     public readonly boardId: string,
     public readonly laneId: string,
     public readonly description?: string,
-    public readonly additionalFields: Record<string, unknown> = {},
+    public readonly columnId?: string,
+    public readonly responsibleId?: string,
+    public readonly properties: Record<string, string | string[]> = {},
   ) {}
 
   static create(input: TaskDraftInput): TaskDraft {
@@ -30,6 +35,14 @@ export class TaskDraft {
     if (!input.laneId) {
       throw new DomainValidationError("TaskDraft: дорожка (laneId) обязательна");
     }
-    return new TaskDraft(title, input.boardId, input.laneId, input.description, input.additionalFields ?? {});
+    return new TaskDraft(
+      title,
+      input.boardId,
+      input.laneId,
+      input.description,
+      input.columnId,
+      input.responsibleId,
+      input.properties ?? {},
+    );
   }
 }
