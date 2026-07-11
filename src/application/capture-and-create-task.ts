@@ -24,7 +24,7 @@ export class CaptureAndCreateTask {
     private readonly logger: Logger,
   ) {}
 
-  async captureStep(): Promise<{ region: CaptureRegion; image: CapturedImage } | null> {
+  async captureStep(): Promise<{ region: CaptureRegion; image: CapturedImage; action: "choice" | "clipboard" } | null> {
     this.logger.debug("CaptureAndCreateTask.captureStep", "starting capture");
     const result = await this.capture.captureRegion();
     if (!result) {
@@ -34,6 +34,7 @@ export class CaptureAndCreateTask {
     this.logger.info("CaptureAndCreateTask.captureStep", "capture succeeded", {
       width: result.region.width,
       height: result.region.height,
+      action: result.action,
     });
     return result;
   }

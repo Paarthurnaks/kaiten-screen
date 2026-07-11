@@ -15,4 +15,8 @@ export interface CaptureOverlayRegionPayload {
   y: number;
   width: number;
   height: number;
+  /** "choice" — обычный сценарий (кнопка "Готово"), показывает окно выбора действия.
+   * "clipboard" — Ctrl+C или иконка "Копировать" в тулбаре: скриншот сразу уходит в
+   * буфер обмена, без промежуточных окон. */
+  action: "choice" | "clipboard";
 }

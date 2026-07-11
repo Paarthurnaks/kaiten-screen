@@ -21,24 +21,26 @@ import {
 export class WindowsScreenCapture implements ScreenCaptureProvider {
   constructor(private readonly logger: Logger) {}
 
-  async captureRegion(): Promise<{ region: CaptureRegion; image: CapturedImage } | null> {
+  async captureRegion(): Promise<{ region: CaptureRegion; image: CapturedImage; action: "choice" | "clipboard" } | null> {
     this.logger.debug("WindowsScreenCapture.captureRegion", "opening capture overlay");
 
-    const region = await this.showOverlayAndWaitForSelection();
-    if (!region) {
+    const selection = await this.showOverlayAndWaitForSelection();
+    if (!selection) {
       this.logger.debug("WindowsScreenCapture.captureRegion", "capture cancelled by user");
       return null;
     }
 
+    const { region, action } = selection;
     const image = await this.grabRegion(region);
     this.logger.info("WindowsScreenCapture.captureRegion", "capture succeeded", {
       width: region.width,
       height: region.height,
+      action,
     });
-    return { region, image };
+    return { region, image, action };
   }
 
-  private showOverlayAndWaitForSelection(): Promise<CaptureRegion | null> {
+  private showOverlayAndWaitForSelection(): Promise<{ region: CaptureRegion; action: "choice" | "clipboard" } | null> {
     return new Promise((resolve) => {
       const displays = screen.getAllDisplays();
       const virtualBounds = displays.reduce(
@@ -68,20 +70,23 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
       });
 
       let settled = false;
-      let pendingRegion: CaptureRegion | null = null;
+      let pendingSelection: { region: CaptureRegion; action: "choice" | "clipboard" } | null = null;
 
       // Закрытие BrowserWindow асинхронно на уровне ОС — если снимать скриншот сразу
       // после overlay.close(), компоситор Windows иногда ещё не убрал прозрачное окно
       // с экрана, и в кадр попадают его пунктирная рамка/тулбар/затемнение. Поэтому
       // ждём реального события "closed" и добавляем небольшую паузу перед resolve().
       const finish = (): void => {
-        setTimeout(() => resolve(pendingRegion), 80);
+        setTimeout(() => resolve(pendingSelection), 80);
       };
 
       const onSelected = (_event: unknown, payload: CaptureOverlayRegionPayload): void => {
         if (settled) return;
         settled = true;
-        pendingRegion = CaptureRegion.create(payload.x, payload.y, payload.width, payload.height);
+        pendingSelection = {
+          region: CaptureRegion.create(payload.x, payload.y, payload.width, payload.height),
+          action: payload.action,
+        };
         removeIpcListeners();
         if (overlay.isDestroyed()) {
           finish();
@@ -92,7 +97,7 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
       const onCancelled = (): void => {
         if (settled) return;
         settled = true;
-        pendingRegion = null;
+        pendingSelection = null;
         removeIpcListeners();
         if (!overlay.isDestroyed()) {
           overlay.close();
@@ -109,12 +114,12 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
       overlay.on("closed", () => {
         if (!settled) {
           settled = true;
-          pendingRegion = null;
+          pendingSelection = null;
           removeIpcListeners();
         }
         // Отмена (cancel/Esc/закрытие окна) резолвится сразу null — пауза нужна только
         // перед снятием скриншота, см. finish().
-        if (pendingRegion) {
+        if (pendingSelection) {
           finish();
         } else {
           resolve(null);

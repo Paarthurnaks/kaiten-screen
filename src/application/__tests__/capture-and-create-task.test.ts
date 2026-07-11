@@ -42,17 +42,17 @@ describe("CaptureAndCreateTask", () => {
     expect(result).toBeNull();
   });
 
-  it("captureStep возвращает регион и изображение при успешном захвате", async () => {
+  it("captureStep возвращает регион, изображение и action при успешном захвате", async () => {
     const region = CaptureRegion.create(0, 0, 100, 100);
     const capture: ScreenCaptureProvider = {
-      captureRegion: vi.fn().mockResolvedValue({ region, image: sampleImage }),
+      captureRegion: vi.fn().mockResolvedValue({ region, image: sampleImage, action: "choice" }),
     };
     const kaiten = {} as KaitenClient;
     const useCase = new CaptureAndCreateTask(capture, kaiten, createNoopLogger());
 
     const result = await useCase.captureStep();
 
-    expect(result).toEqual({ region, image: sampleImage });
+    expect(result).toEqual({ region, image: sampleImage, action: "choice" });
   });
 
   it("submitStep бросает DomainValidationError при пустом заголовке и не вызывает kaiten.createTask", async () => {

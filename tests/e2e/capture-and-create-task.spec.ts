@@ -47,7 +47,7 @@ async function captureAndFillTaskForm(electronApp: ElectronApplication): Promise
   await overlayPage.evaluate(() => {
     // `window` недоступен в типах Node-tsconfig этого файла — обращаемся через globalThis.
     (globalThis as unknown as { captureOverlay: { reportRegionSelected: (r: unknown) => void } }).captureOverlay
-      .reportRegionSelected({ x: 100, y: 100, width: 220, height: 160 });
+      .reportRegionSelected({ x: 100, y: 100, width: 220, height: 160, action: "choice" });
   });
 
   // После захвата теперь сначала открывается экран выбора действия (см. windows.ts:

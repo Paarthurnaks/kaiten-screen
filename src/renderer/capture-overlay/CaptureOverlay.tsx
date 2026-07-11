@@ -38,11 +38,17 @@ export function CaptureOverlay() {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         window.captureOverlay.reportCancelled();
+        return;
+      }
+      // Ctrl+C поверх готового выделения — сразу в буфер обмена, минуя окно выбора
+      // действия (аналог кнопки "Копировать" в тулбаре, см. handleCopy).
+      if (event.key.toLowerCase() === "c" && event.ctrlKey && phase === "selected" && rect && !isTooSmall(rect)) {
+        window.captureOverlay.reportRegionSelected({ ...rect, action: "clipboard" });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [phase, rect]);
 
   const handleContainerMouseDown = useCallback(
     (event: React.MouseEvent) => {
@@ -153,7 +159,17 @@ export function CaptureOverlay() {
     (event: React.MouseEvent) => {
       event.stopPropagation();
       if (!rect || isTooSmall(rect)) return;
-      window.captureOverlay.reportRegionSelected(rect);
+      window.captureOverlay.reportRegionSelected({ ...rect, action: "choice" });
+    },
+    [rect],
+  );
+
+  // Иконка "Копировать" в тулбаре — тот же результат, что и Ctrl+C (см. handleKeyDown).
+  const handleCopy = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!rect || isTooSmall(rect)) return;
+      window.captureOverlay.reportRegionSelected({ ...rect, action: "clipboard" });
     },
     [rect],
   );
@@ -264,6 +280,9 @@ export function CaptureOverlay() {
           </ToolbarButton>
           <ToolbarButton title="Заново" onClick={handleRedo}>
             ↺
+          </ToolbarButton>
+          <ToolbarButton title="Скопировать в буфер обмена (Ctrl+C)" onClick={handleCopy}>
+            📋
           </ToolbarButton>
           <ToolbarDivider />
           <button

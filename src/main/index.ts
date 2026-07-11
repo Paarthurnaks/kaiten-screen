@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow, clipboard, Menu, nativeImage } from "electron";
 import { join } from "node:path";
 import { registerCaptureHotkey, unregisterAllHotkeys } from "./hotkeys";
 import { createTray } from "./tray";
@@ -89,6 +89,16 @@ export async function triggerCaptureFlow(): Promise<void> {
   const result = await captureAndCreateTask.captureStep();
   if (!result) {
     logger.debug("Main.triggerCaptureFlow", "capture returned no result (cancelled)");
+    return;
+  }
+  if (result.action === "clipboard") {
+    // Ctrl+C/иконка "Копировать" в оверлее — сразу в буфер обмена, без окна выбора
+    // действия (см. shared/capture-overlay-protocol.ts).
+    clipboard.writeImage(nativeImage.createFromBuffer(result.image.buffer));
+    logger.info("Main.triggerCaptureFlow", "capture copied to clipboard directly from overlay", {
+      width: result.region.width,
+      height: result.region.height,
+    });
     return;
   }
   pendingCapture = result;
