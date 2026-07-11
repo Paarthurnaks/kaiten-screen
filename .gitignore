@@ -12,6 +12,7 @@ kaiten-screen*config*.json
 *.log
 test-results/
 playwright-report/
+.idea/
 
 # Внутренний справочник по Kaiten API с реальным доменом компании (alphacore.kaiten.ru) —
 # не для публичного репозитория, оставляем только локально.
