@@ -32,6 +32,7 @@ export function CaptureOverlay() {
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
   const resizeCorner = useRef<Corner | null>(null);
   const resizeOrigin = useRef<Rect | null>(null);
+  const moveOrigin = useRef<{ mouseX: number; mouseY: number; rect: Rect } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -83,6 +84,16 @@ export function CaptureOverlay() {
           height = Math.max(MIN_SELECTION_SIZE, event.clientY - origin.y);
         }
         setRect({ x, y, width, height });
+      } else if (phase === "selected" && moveOrigin.current) {
+        const { mouseX, mouseY, rect: origin } = moveOrigin.current;
+        const maxX = window.innerWidth - origin.width;
+        const maxY = window.innerHeight - origin.height;
+        setRect({
+          x: Math.min(Math.max(0, origin.x + (event.clientX - mouseX)), Math.max(0, maxX)),
+          y: Math.min(Math.max(0, origin.y + (event.clientY - mouseY)), Math.max(0, maxY)),
+          width: origin.width,
+          height: origin.height,
+        });
       }
     },
     [phase],
@@ -100,6 +111,8 @@ export function CaptureOverlay() {
     } else if (resizeCorner.current) {
       resizeCorner.current = null;
       resizeOrigin.current = null;
+    } else if (moveOrigin.current) {
+      moveOrigin.current = null;
     }
   }, [phase, rect]);
 
@@ -109,6 +122,17 @@ export function CaptureOverlay() {
       if (!rect) return;
       resizeCorner.current = corner;
       resizeOrigin.current = rect;
+    },
+    [rect],
+  );
+
+  // Перетаскивание всей выделенной области целиком (как в Lightshot) — клик внутри
+  // рамки, не на ручке изменения размера (те сами stopPropagation'ят).
+  const startMove = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!rect) return;
+      moveOrigin.current = { mouseX: event.clientX, mouseY: event.clientY, rect };
     },
     [rect],
   );
@@ -164,6 +188,7 @@ export function CaptureOverlay() {
     >
       {rect && !isTooSmall(rect) && (
         <div
+          onMouseDown={phase === "selected" ? startMove : undefined}
           style={{
             position: "absolute",
             left: rect.x,
@@ -173,6 +198,7 @@ export function CaptureOverlay() {
             boxSizing: "border-box",
             outline: "1.5px dashed var(--ks-accent)",
             boxShadow: "0 0 0 2000px rgba(0, 0, 0, 0.55)",
+            cursor: phase === "selected" ? "move" : undefined,
           }}
         >
           {showDimensionLabel && (

@@ -86,7 +86,7 @@ export function showPostCaptureChoiceWindow(logger: Logger): BrowserWindow {
 
   postCaptureChoiceWindow = new BrowserWindow({
     width: 420,
-    height: 540,
+    height: 600,
     title: "Kaiten Screen — Скриншот готов",
     icon: createAppIcon(),
     webPreferences: { preload: join(__dirname, "../preload/index.cjs") },

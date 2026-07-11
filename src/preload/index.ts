@@ -24,6 +24,7 @@ const kaitenScreenApi: KaitenScreenApi = {
   chooseAttachExisting: () => ipcRenderer.invoke(IPC_CHANNELS.chooseAttachExisting),
   cancelPendingCapture: () => ipcRenderer.invoke(IPC_CHANNELS.cancelPendingCapture),
   attachToExistingCard: (cardId: string) => ipcRenderer.invoke(IPC_CHANNELS.attachToExistingCard, cardId),
+  copyToClipboard: () => ipcRenderer.invoke(IPC_CHANNELS.copyToClipboard),
   backToChoice: () => ipcRenderer.invoke(IPC_CHANNELS.backToChoice),
   exportProjectConfig: () => ipcRenderer.invoke(IPC_CHANNELS.exportProjectConfig),
   importProjectConfig: () => ipcRenderer.invoke(IPC_CHANNELS.importProjectConfig),

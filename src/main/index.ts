@@ -7,6 +7,7 @@ import { registerIpcHandlers } from "./ipc-handlers";
 import { exportConfigToFile, importConfigFromFile } from "./config-file-transfer";
 import { seedConfigFromProjectFileIfEmpty } from "./project-config-seed";
 import { checkForUpdatesManually, setupAutoUpdater } from "./auto-updater";
+import { notifyIfVersionChanged } from "./version-notice";
 import { createFileLogger } from "../infrastructure/logging/file-logger";
 import { JsonConfigStore } from "../infrastructure/config/json-config-store";
 import { ElectronSafeStorage } from "../infrastructure/secrets/electron-safe-storage";
@@ -35,6 +36,15 @@ import type { CapturedImage } from "../domain/entities/captured-image";
 // настройки/API-ключ разработчика в общем userData (mock-домен/ключ иначе остаются
 // там после каждого `npm run test:e2e`).
 app.setName(process.env.E2E_TEST_HOOKS === "1" ? "kaiten-screen-e2e" : "kaiten-screen");
+
+// Без явного AppUserModelID, совпадающего с appId из electron-builder.yml, Windows
+// иногда молча не показывает toast-уведомления (Notification.show() не бросает ошибку,
+// просто ничего не появляется на экране) — обнаружено вживую: автообновление реально
+// скачалось и установилось (подтверждено новой функциональностью после перезапуска), но
+// ни одно из двух уведомлений (update-available/update-downloaded) не отобразилось.
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.kaitenscreen.app");
+}
 
 const userDataDir = app.getPath("userData");
 const logger = createFileLogger(join(userDataDir, "logs"));
@@ -121,6 +131,8 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
   // Приложение не использует File/Edit/View и т.п. — это системное меню Electron
   // по умолчанию только занимает место и сбивает с толку.
   Menu.setApplicationMenu(null);
+
+  notifyIfVersionChanged(userDataDir, logger);
 
   const seeded = await seedConfigFromProjectFileIfEmpty(configStore, secretStore, logger);
   if (seeded) {

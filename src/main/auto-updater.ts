@@ -1,6 +1,19 @@
-import { app } from "electron";
-import { autoUpdater } from "electron-updater";
+import { app, Notification } from "electron";
+// electron-updater — CommonJS-модуль; именованный импорт `{ autoUpdater }` компилируется
+// TypeScript'ом без ошибок, но падает в рантайме под Node ESM ("Named export 'autoUpdater'
+// not found") — обнаружено вживую при прогоне собранного приложения, не ловится
+// typecheck'ом. Дефолтный импорт + деструктуризация — единственный рабочий вариант тут.
+import electronUpdaterPkg from "electron-updater";
 import type { Logger } from "../domain/ports/logger";
+
+const { autoUpdater } = electronUpdaterPkg;
+
+function notify(title: string, body: string, onClick?: () => void): void {
+  if (!Notification.isSupported()) return;
+  const notification = new Notification({ title, body });
+  if (onClick) notification.on("click", onClick);
+  notification.show();
+}
 
 /**
  * Автообновление через GitHub Releases (см. publish в electron-builder.yml).
@@ -24,6 +37,11 @@ export function setupAutoUpdater(logger: Logger): void {
   });
   autoUpdater.on("update-available", (info) => {
     logger.info("AutoUpdater", "update available", { version: info.version });
+    // Сигнал, что обновление вообще есть и уже качается в фоне — иначе между кликом
+    // "Проверить обновления"/фоновой проверкой и полной загрузкой (может занять минуту+
+    // на большом .exe) пользователь не видит вообще ничего и не понимает, происходит ли
+    // что-то. Второе уведомление — по факту готовности — см. update-downloaded ниже.
+    notify("Kaiten Screen", `Доступна версия ${info.version} — скачиваю в фоне…`);
   });
   autoUpdater.on("update-not-available", () => {
     logger.debug("AutoUpdater", "no update available", { currentVersion: app.getVersion() });
@@ -36,6 +54,15 @@ export function setupAutoUpdater(logger: Logger): void {
   });
   autoUpdater.on("update-downloaded", (info) => {
     logger.info("AutoUpdater", "update downloaded — will install on next quit", { version: info.version });
+    // Клик по уведомлению — установить сразу, не дожидаясь следующего обычного закрытия.
+    notify(
+      "Kaiten Screen обновлён",
+      `Версия ${info.version} скачана и будет установлена при следующем запуске. Нажмите, чтобы установить сейчас.`,
+      () => {
+        logger.debug("AutoUpdater", "update notification clicked — installing now");
+        autoUpdater.quitAndInstall();
+      },
+    );
   });
 
   void autoUpdater.checkForUpdates();

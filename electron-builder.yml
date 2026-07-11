@@ -19,3 +19,7 @@ publish:
   provider: github
   owner: Paarthurnaks
   repo: kaiten-screen
+  # По умолчанию electron-builder публикует релиз черновиком (нужно вручную нажать
+  # "Publish" на GitHub) — валидатор конфига этой версии не принимает draft: false
+  # напрямую здесь, поэтому "публикуем" черновик отдельным шагом после сборки
+  # (см. npm run release -> scripts/publish-release.mjs).

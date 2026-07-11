@@ -39,6 +39,11 @@ export function PostCaptureChoice() {
     await window.kaitenScreen.chooseAttachExisting();
   }
 
+  async function handleCopyToClipboard(): Promise<void> {
+    setBusy(true);
+    await window.kaitenScreen.copyToClipboard();
+  }
+
   async function handleCancel(): Promise<void> {
     setBusy(true);
     await window.kaitenScreen.cancelPendingCapture();
@@ -87,6 +92,13 @@ export function PostCaptureChoice() {
             subtitle="Найти задачу по ID или названию"
             disabled={busy || loading}
             onClick={() => void handleAttachExisting()}
+          />
+          <ActionButton
+            icon="📋"
+            title="Скопировать в буфер обмена"
+            subtitle="Без создания карточки в Kaiten"
+            disabled={busy || loading}
+            onClick={() => void handleCopyToClipboard()}
           />
           <button
             type="button"

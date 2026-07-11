@@ -21,6 +21,7 @@ export const IPC_CHANNELS = {
   chooseAttachExisting: "app:choose-attach-existing",
   cancelPendingCapture: "app:cancel-pending-capture",
   attachToExistingCard: "app:attach-to-existing-card",
+  copyToClipboard: "app:copy-to-clipboard",
   backToChoice: "app:back-to-choice",
   exportProjectConfig: "app:export-project-config",
   importProjectConfig: "app:import-project-config",
@@ -114,6 +115,9 @@ export interface KaitenScreenApi {
   cancelPendingCapture(): Promise<void>;
   /** Прикрепляет ожидающий скриншот к существующей карточке и закрывает окно. */
   attachToExistingCard(cardId: string): Promise<void>;
+  /** Копирует ожидающий скриншот в системный буфер обмена и закрывает окно — позволяет
+   * пользоваться приложением как обычным скриншотером, без создания карточки в Kaiten. */
+  copyToClipboard(): Promise<void>;
   /** Экран формы задачи/прикрепления -> закрывает себя и возвращает на экран выбора
    * действия, не сбрасывая ожидающий скриншот (в отличие от cancelPendingCapture). */
   backToChoice(): Promise<void>;

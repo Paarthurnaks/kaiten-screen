@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, nativeImage } from "electron";
+import { BrowserWindow, clipboard, ipcMain, nativeImage } from "electron";
 import { IPC_CHANNELS } from "../shared/ipc-contract";
 import type {
   ExportProjectConfigResultDto,
@@ -162,6 +162,17 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     deps.clearPendingCapture();
     // Окно не закрывается автоматически — renderer показывает состояние успеха
     // (как в TaskForm) и закрывает окно сам по клику пользователя.
+  });
+
+  ipcMain.handle(IPC_CHANNELS.copyToClipboard, (event): void => {
+    logger.debug("IpcHandlers.copyToClipboard", "requested");
+    const pending = deps.getPendingCapture();
+    if (!pending) {
+      throw new Error("No pending screenshot to copy — capture a region first");
+    }
+    clipboard.writeImage(nativeImage.createFromBuffer(pending.image.buffer));
+    deps.clearPendingCapture();
+    BrowserWindow.fromWebContents(event.sender)?.close();
   });
 
   ipcMain.handle(IPC_CHANNELS.chooseCreateTask, (event): void => {
