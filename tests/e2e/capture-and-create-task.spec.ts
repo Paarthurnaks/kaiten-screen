@@ -99,7 +99,7 @@ test.describe("Screenshot -> Kaiten task (e2e)", () => {
 
     expect(server.requests.some((r) => r.method === "POST" && r.url === "/api/latest/cards")).toBe(true);
     // Реальный Kaiten API требует PUT для attach-file-to-card (подтверждено curl-запросом к
-    // alphacore.kaiten.ru) — было POST.
+    // боевому Kaiten) — было POST.
     expect(server.requests.some((r) => r.method === "PUT" && /\/files$/.test(r.url))).toBe(true);
 
     await electronApp.close();

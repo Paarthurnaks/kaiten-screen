@@ -52,8 +52,8 @@ export interface KaitenCreatedTask {
 }
 
 /**
- * Клиент Kaiten API. Схема эндпоинтов подтверждена реальными ответами
- * `alphacore.kaiten.ru` (см. examples.md и infrastructure/kaiten/kaiten-http-client.ts).
+ * Клиент Kaiten API. Схема эндпоинтов подтверждена реальными ответами боевого Kaiten
+ * (см. infrastructure/kaiten/kaiten-http-client.ts).
  */
 export interface KaitenClient {
   createTask(draft: TaskDraft): Promise<KaitenCreatedTask>;

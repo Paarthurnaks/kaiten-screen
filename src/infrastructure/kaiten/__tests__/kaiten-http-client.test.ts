@@ -89,7 +89,7 @@ describe("KaitenHttpClient", () => {
 
   it("createTask включает column_id/responsible_id/properties, только если они заданы, и приводит values properties к массиву чисел", async () => {
     // Kaiten валидирует values пользовательских полей как "массив integer | null" — независимо
-    // от multi_select, подтверждено двумя разными реальными ответами 400 от alphacore.kaiten.ru
+    // от multi_select, подтверждено двумя разными реальными ответами 400 от боевого Kaiten
     // (см. комментарий в kaiten-http-client.ts createTask). Одиночный выбор (скаляр в домене)
     // оборачивается в одноэлементный массив; строковые id приводятся к числам.
     const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: 42 }));
@@ -146,7 +146,7 @@ describe("KaitenHttpClient", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://mycompany.kaiten.ru/api/latest/cards/42/files");
     // Реальный Kaiten API требует PUT для attach-file-to-card (подтверждено curl-запросом
-    // к alphacore.kaiten.ru) — раньше здесь ошибочно стоял POST.
+    // к боевому Kaiten) — раньше здесь ошибочно стоял POST.
     expect(init.method).toBe("PUT");
     expect(init.body).toBeInstanceOf(FormData);
   });

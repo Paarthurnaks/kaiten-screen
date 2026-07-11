@@ -15,7 +15,7 @@ import type { ConfigStore } from "../../domain/ports/config-store";
 import type { SecretStore } from "../../domain/ports/secret-store";
 import type { Logger } from "../../domain/ports/logger";
 
-// Схема эндпоинтов и полей подтверждена реальными ответами `alphacore.kaiten.ru`
+// Схема эндпоинтов и полей подтверждена реальными ответами боевого Kaiten
 // (см. examples.md в корне репозитория за подробностями и примерами curl/ответов).
 const API_PREFIX = "/api/latest";
 const ENDPOINTS = {
@@ -126,7 +126,7 @@ export class KaitenHttpClient implements KaitenClient {
     if (draft.responsibleId) body.responsible_id = draft.responsibleId;
     if (Object.keys(draft.properties).length > 0) {
       // Kaiten валидирует значения select-полей как "массив integer | null" — подтверждено
-      // двумя разными реальными ответами 400 от alphacore.kaiten.ru: для одного поля с
+      // двумя разными реальными ответами 400 от боевого Kaiten: для одного поля с
       // multi_select=true отклонялся массив строк ("[0] should be integer"), для другого
       // с multi_select=false отклонялось скалярное число ("should be array"). Т.е. формат
       // на проводе — всегда массив чисел, независимо от multi_select (тот влияет только на
