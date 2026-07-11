@@ -12,3 +12,16 @@ kaiten-screen*config*.json
 *.log
 test-results/
 playwright-report/
+
+# Внутренний справочник по Kaiten API с реальным доменом компании (alphacore.kaiten.ru) —
+# не для публичного репозитория, оставляем только локально.
+examples.md
+
+# Служебные файлы AI-инструментов разработки (Claude Code / AI Factory) — не часть
+# продукта, в публичном репозитории не нужны.
+.claude/
+.ai-factory/
+.ai-factory.json
+.mcp.json
+AGENTS.md
+skills-lock.json
