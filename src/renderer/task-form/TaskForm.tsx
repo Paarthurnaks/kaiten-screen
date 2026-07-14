@@ -274,13 +274,21 @@ export function TaskForm() {
               border: "1px solid var(--ks-border)",
             }}
           >
-            <img
-              src={pending.imageDataUrl}
-              alt="Скриншот"
-              style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
-            />
+            {pending.kind === "video" ? (
+              <video
+                src={pending.videoDataUrl}
+                muted
+                style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+              />
+            ) : (
+              <img
+                src={pending.imageDataUrl}
+                alt="Скриншот"
+                style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+              />
+            )}
             <div style={{ flex: 1, fontSize: 13, color: "var(--ks-text-secondary)" }}>
-              screenshot.png{" "}
+              {pending.kind === "video" ? "recording.webm" : "screenshot.png"}{" "}
               <span style={{ color: "var(--ks-text-faint)" }}>
                 · {pending.region.width}×{pending.region.height}
               </span>

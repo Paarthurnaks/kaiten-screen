@@ -27,11 +27,19 @@ export const IPC_CHANNELS = {
   importProjectConfig: "app:import-project-config",
 } as const;
 
-export interface PendingCaptureDto {
-  region: { x: number; y: number; width: number; height: number };
-  /** data:image/png;base64,... — готово для использования в <img src>. */
-  imageDataUrl: string;
-}
+export type PendingCaptureDto =
+  | {
+      kind: "image";
+      region: { x: number; y: number; width: number; height: number };
+      /** data:image/png;base64,... — готово для использования в <img src>. */
+      imageDataUrl: string;
+    }
+  | {
+      kind: "video";
+      region: { x: number; y: number; width: number; height: number };
+      /** data:video/webm;base64,... — готово для использования в <video src>. */
+      videoDataUrl: string;
+    };
 
 export interface SubmitTaskInputDto {
   title: string;
@@ -99,6 +107,8 @@ export interface ImportProjectConfigResultDto {
 }
 
 export interface KaitenScreenApi {
+  /** Возвращает ожидающий скриншот либо запись видео (см. PendingCaptureDto.kind),
+   * либо null, если ничего не ожидает обработки. */
   getPendingCapture(): Promise<PendingCaptureDto | null>;
   submitTask(input: SubmitTaskInputDto): Promise<SubmitTaskResultDto>;
   loadSettings(): Promise<LoadedSettingsDto>;

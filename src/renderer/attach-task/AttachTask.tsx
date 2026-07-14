@@ -191,16 +191,24 @@ export function AttachTask() {
           }}
         >
           {pending ? (
-            <img
-              src={pending.imageDataUrl}
-              alt="Скриншот"
-              style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
-            />
+            pending.kind === "video" ? (
+              <video
+                src={pending.videoDataUrl}
+                muted
+                style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
+              />
+            ) : (
+              <img
+                src={pending.imageDataUrl}
+                alt="Скриншот"
+                style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
+              />
+            )
           ) : (
             <div style={{ width: 34, height: 26, borderRadius: 5, background: "var(--ks-bg-chip)", flexShrink: 0 }} />
           )}
           <div style={{ flex: 1, fontSize: 12.5, color: "var(--ks-text-muted)" }}>
-            screenshot.png будет прикреплён к #{selectedTask.id}
+            {pending?.kind === "video" ? "recording.webm" : "screenshot.png"} будет прикреплён к #{selectedTask.id}
           </div>
         </div>
       )}
