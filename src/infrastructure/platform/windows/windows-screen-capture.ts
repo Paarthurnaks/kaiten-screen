@@ -83,8 +83,17 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
       const onSelected = (_event: unknown, payload: CaptureOverlayRegionPayload): void => {
         if (settled) return;
         settled = true;
+        // payload.x/y приходят как clientX/clientY overlay-окна (относительно его
+        // собственного клиентского прямоугольника), а не как абсолютные координаты
+        // виртуального рабочего стола — переводим их в абсолютные, добавляя левый/
+        // верхний край virtualBounds, с которого начинается сам overlay.
         pendingSelection = {
-          region: CaptureRegion.create(payload.x, payload.y, payload.width, payload.height),
+          region: CaptureRegion.create(
+            virtualBounds.left + payload.x,
+            virtualBounds.top + payload.y,
+            payload.width,
+            payload.height,
+          ),
           action: payload.action,
         };
         removeIpcListeners();
@@ -136,28 +145,35 @@ export class WindowsScreenCapture implements ScreenCaptureProvider {
   }
 
   private async grabRegion(region: CaptureRegion): Promise<CapturedImage> {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    // TODO: при мультимониторной настройке точнее выбирать источник desktopCapturer
-    // под конкретный дисплей, на котором выделен регион, а не всегда первичный экран.
+    // Регион приходит в логических пикселях (DIP) экрана, на котором его выделили,
+    // а desktopCapturer отдаёт кадр в физических пикселях — на масштабировании
+    // Windows выше 100% (125%/150%, обычный дефолт на многих ноутбуках) без учёта
+    // scaleFactor кроп получался меньше и смещён к левому верхнему углу от
+    // реально выделенной области, из-за чего вставленный скриншот выглядел обрезанным.
+    const display = screen.getDisplayNearestPoint({
+      x: Math.round(region.x + region.width / 2),
+      y: Math.round(region.y + region.height / 2),
+    });
+
     const sources = await desktopCapturer.getSources({
       types: ["screen"],
       thumbnailSize: {
-        width: Math.round(primaryDisplay.size.width * primaryDisplay.scaleFactor),
-        height: Math.round(primaryDisplay.size.height * primaryDisplay.scaleFactor),
+        width: Math.round(display.size.width * display.scaleFactor),
+        height: Math.round(display.size.height * display.scaleFactor),
       },
     });
 
-    const source = sources[0];
+    const source = sources.find((candidate) => candidate.display_id === String(display.id)) ?? sources[0];
     if (!source) {
       this.logger.error("WindowsScreenCapture.grabRegion", "no screen source available");
       throw new Error("No screen source available for capture");
     }
 
     const cropped = source.thumbnail.crop({
-      x: Math.round(region.x),
-      y: Math.round(region.y),
-      width: Math.round(region.width),
-      height: Math.round(region.height),
+      x: Math.round((region.x - display.bounds.x) * display.scaleFactor),
+      y: Math.round((region.y - display.bounds.y) * display.scaleFactor),
+      width: Math.round(region.width * display.scaleFactor),
+      height: Math.round(region.height * display.scaleFactor),
     });
 
     return { buffer: cropped.toPNG(), mimeType: "image/png" };
