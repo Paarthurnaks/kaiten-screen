@@ -13,13 +13,17 @@ import { JsonConfigStore } from "../infrastructure/config/json-config-store";
 import { ElectronSafeStorage } from "../infrastructure/secrets/electron-safe-storage";
 import { KaitenHttpClient } from "../infrastructure/kaiten/kaiten-http-client";
 import { WindowsScreenCapture } from "../infrastructure/platform/windows/windows-screen-capture";
+import { WindowsScreenRecording } from "../infrastructure/platform/windows/windows-screen-recording";
 import { CaptureAndCreateTask } from "../application/capture-and-create-task";
 import { LoadSettings } from "../application/load-settings";
 import { SaveSettings } from "../application/save-settings";
 import { ListKaitenOptions } from "../application/list-kaiten-options";
 import type { ScreenCaptureProvider } from "../domain/ports/screen-capture-provider";
-import type { CaptureRegion } from "../domain/value-objects/capture-region";
+import type { ScreenRecordingProvider } from "../domain/ports/screen-recording-provider";
+import { CaptureRegion } from "../domain/value-objects/capture-region";
 import type { CapturedImage } from "../domain/entities/captured-image";
+import type { CapturedVideo } from "../domain/entities/captured-video";
+import type { AppConfig } from "../domain/ports/config-store";
 
 // Composition root (см. ARCHITECTURE.md): единственное место, где конкретные
 // адаптеры создаются и внедряются в use-cases. Domain/application ничего не знают
@@ -64,18 +68,42 @@ function createScreenCaptureProvider(): ScreenCaptureProvider {
   }
 }
 
+function createScreenRecordingProvider(): ScreenRecordingProvider {
+  // Зеркалирует createScreenCaptureProvider() — единственное место выбора
+  // платформенного адаптера записи.
+  switch (process.platform) {
+    case "win32":
+      return new WindowsScreenRecording(configStore, logger);
+    default:
+      throw new Error(`Screen recording is not implemented for platform "${process.platform}" yet`);
+  }
+}
+
 const captureProvider = createScreenCaptureProvider();
+const screenRecordingProvider = createScreenRecordingProvider();
 
 export const captureAndCreateTask = new CaptureAndCreateTask(captureProvider, kaitenClient, logger);
 export const loadSettings = new LoadSettings(configStore, secretStore, logger);
 export const saveSettings = new SaveSettings(configStore, secretStore, logger);
 export const listKaitenOptions = new ListKaitenOptions(kaitenClient, logger);
 
-// Последний захваченный регион/изображение, ожидающие показа в форме задачи.
-// Форма забирает их через IPC-хендлер app:get-pending-capture (см. ipc-handlers.ts).
-let pendingCapture: { region: CaptureRegion; image: CapturedImage } | null = null;
+export type PendingCapture =
+  | { kind: "image"; region: CaptureRegion; image: CapturedImage }
+  | { kind: "video"; region: CaptureRegion; video: CapturedVideo };
 
-function getPendingCapture(): { region: CaptureRegion; image: CapturedImage } | null {
+// Последний захваченный регион/вложение (скриншот или запись), ожидающие показа в
+// окне выбора действия/форме задачи. Забирается через IPC-хендлер
+// app:get-pending-capture (см. ipc-handlers.ts).
+let pendingCapture: PendingCapture | null = null;
+// true между стартом и остановкой записи — определяет, что делает toggle-хоткей/
+// пункт трея записи (старт vs стоп), см. toggleRecording().
+let isRecording = false;
+// Регион, выбранный при старте текущей записи — нужен на остановке, чтобы окно
+// выбора действия могло показать размеры видео (сама запись эти же координаты
+// использует внутри себя, см. WindowsScreenRecording).
+let lastRecordingRegion: CaptureRegion | null = null;
+
+function getPendingCapture(): PendingCapture | null {
   return pendingCapture;
 }
 
@@ -101,7 +129,7 @@ export async function triggerCaptureFlow(): Promise<void> {
     });
     return;
   }
-  pendingCapture = result;
+  pendingCapture = { kind: "image", region: result.region, image: result.image };
   logger.info("Main.triggerCaptureFlow", "capture ready, opening post-capture choice", {
     width: result.region.width,
     height: result.region.height,
@@ -109,9 +137,63 @@ export async function triggerCaptureFlow(): Promise<void> {
   showPostCaptureChoiceWindow(logger);
 }
 
-function reregisterCaptureHotkey(accelerator: string): void {
+/** Старт записи видео выделенной области — общая точка входа для хоткея-тоггла и
+ * пункта трея (см. toggleRecording()). Overlay выделения запускает саму запись
+ * внутри себя (см. ScreenRecordingProvider.selectRegion), эта функция лишь
+ * дожидается результата и переключает isRecording. */
+async function triggerRecordFlow(): Promise<void> {
+  logger.debug("Main.triggerRecordFlow", "starting recording flow");
+  const result = await screenRecordingProvider.selectRegion();
+  if (!result) {
+    logger.debug("Main.triggerRecordFlow", "recording cancelled or failed to start");
+    return;
+  }
+  isRecording = true;
+  lastRecordingRegion = result.region;
+  logger.info("Main.triggerRecordFlow", "recording started", {
+    width: result.region.width,
+    height: result.region.height,
+  });
+}
+
+/** Остановка текущей записи — по кнопке индикатора (через тот же toggle-хоткей/
+ * трей) или программно. Открывает окно выбора действия с готовым видео, как и
+ * triggerCaptureFlow делает для скриншота. */
+async function triggerStopRecordFlow(): Promise<void> {
+  if (!isRecording) {
+    logger.debug("Main.triggerStopRecordFlow", "no active recording to stop");
+    return;
+  }
+  logger.debug("Main.triggerStopRecordFlow", "stopping recording");
+  const video = await screenRecordingProvider.stopRecording();
+  isRecording = false;
+  if (!video) {
+    logger.warn("Main.triggerStopRecordFlow", "recording stopped without a result");
+    return;
+  }
+  logger.info("Main.triggerStopRecordFlow", "recording finished, opening post-capture choice", {
+    byteLength: video.buffer.byteLength,
+  });
+  // ScreenRecordingProvider.stopRecording() не возвращает регион (только start
+  // делает) — берём его из lastRecordingRegion, сохранённого при старте.
+  pendingCapture = { kind: "video", region: lastRecordingRegion ?? CaptureRegion.create(0, 0, 1, 1), video };
+  lastRecordingRegion = null;
+  showPostCaptureChoiceWindow(logger);
+}
+
+/** Toggle одним хоткеем/пунктом трея: старт, если не идёт запись, иначе — стоп. */
+function toggleRecording(): void {
+  if (isRecording) {
+    void triggerStopRecordFlow();
+  } else {
+    void triggerRecordFlow();
+  }
+}
+
+function reregisterHotkeys(config: Pick<AppConfig, "captureHotkey" | "recordHotkey">): void {
   unregisterAllHotkeys(logger);
-  registerCaptureHotkey(accelerator, () => void triggerCaptureFlow(), logger);
+  registerCaptureHotkey(config.captureHotkey, () => void triggerCaptureFlow(), logger);
+  registerCaptureHotkey(config.recordHotkey, toggleRecording, logger);
 }
 
 function applyAutostart(enabled: boolean): void {
@@ -127,7 +209,7 @@ async function importProjectConfig(window: BrowserWindow | undefined): Promise<b
   const applied = await importConfigFromFile(window, configStore, secretStore, logger);
   if (applied) {
     const config = await configStore.getConfig();
-    reregisterCaptureHotkey(config.captureHotkey);
+    reregisterHotkeys(config);
     applyAutostart(config.autostart);
   }
   return applied;
@@ -150,12 +232,13 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
   }
 
   const config = await configStore.getConfig();
-  reregisterCaptureHotkey(config.captureHotkey);
+  reregisterHotkeys(config);
   applyAutostart(config.autostart);
 
   createTray(
     {
       onCapture: () => void triggerCaptureFlow(),
+      onToggleRecording: toggleRecording,
       onOpenSettings: () => showSettingsWindow(logger),
       onCheckForUpdates: () => checkForUpdatesManually(logger),
     },
@@ -171,7 +254,7 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
     listKaitenOptions,
     getPendingCapture,
     clearPendingCapture,
-    reregisterCaptureHotkey,
+    reregisterHotkeys,
     applyAutostart,
     exportProjectConfig,
     importProjectConfig,

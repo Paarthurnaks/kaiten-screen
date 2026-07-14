@@ -5,6 +5,7 @@ import type { CaptureAndCreateTask } from "../../application/capture-and-create-
 import type { LoadSettings } from "../../application/load-settings";
 import type { SaveSettings } from "../../application/save-settings";
 import type { ListKaitenOptions } from "../../application/list-kaiten-options";
+import type { PendingCapture } from "../index";
 
 type HandlerFn = (event: unknown, ...args: unknown[]) => unknown;
 const handlers = new Map<string, HandlerFn>();
@@ -37,7 +38,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
     const { IPC_CHANNELS } = await import("../../shared/ipc-contract");
 
     const region = CaptureRegion.create(0, 0, 10, 10);
-    let pending: { region: CaptureRegion; image: CapturedImage } | null = { region, image: sampleImage };
+    let pending: PendingCapture | null = { kind: "image", region, image: sampleImage };
 
     const captureAndCreateTask = {
       submitStep: vi.fn().mockRejectedValue(new Error("network down")),
@@ -52,7 +53,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       clearPendingCapture: () => {
         pending = null;
       },
-      reregisterCaptureHotkey: vi.fn(),
+      reregisterHotkeys: vi.fn(),
       applyAutostart: vi.fn(),
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
@@ -80,7 +81,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       listKaitenOptions: {} as unknown as ListKaitenOptions,
       getPendingCapture: () => null,
       clearPendingCapture: vi.fn(),
-      reregisterCaptureHotkey: vi.fn(),
+      reregisterHotkeys: vi.fn(),
       applyAutostart: vi.fn(),
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
@@ -90,7 +91,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
     const submitHandler = handlers.get(IPC_CHANNELS.submitTask);
     await expect(
       submitHandler!({}, { title: "Bug", boardId: "b1", laneId: "l1" }),
-    ).rejects.toThrow(/No pending screenshot/);
+    ).rejects.toThrow(/No pending capture/);
     expect(submitStep).not.toHaveBeenCalled();
   });
 
@@ -99,7 +100,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
     const { IPC_CHANNELS } = await import("../../shared/ipc-contract");
 
     const region = CaptureRegion.create(0, 0, 10, 10);
-    let pending: { region: CaptureRegion; image: CapturedImage } | null = { region, image: sampleImage };
+    let pending: PendingCapture | null = { kind: "image", region, image: sampleImage };
 
     const captureAndCreateTask = {
       submitStep: vi.fn().mockResolvedValue({
@@ -118,7 +119,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       clearPendingCapture: () => {
         pending = null;
       },
-      reregisterCaptureHotkey: vi.fn(),
+      reregisterHotkeys: vi.fn(),
       applyAutostart: vi.fn(),
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),

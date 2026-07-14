@@ -16,21 +16,23 @@ import type { CaptureAndCreateTask } from "../application/capture-and-create-tas
 import type { LoadSettings } from "../application/load-settings";
 import type { SaveSettings } from "../application/save-settings";
 import type { ListKaitenOptions } from "../application/list-kaiten-options";
-import type { CaptureRegion } from "../domain/value-objects/capture-region";
-import type { CapturedImage } from "../domain/entities/captured-image";
+import type { Attachment } from "../domain/entities/attachment";
+import type { AppConfig } from "../domain/ports/config-store";
 import type { Logger } from "../domain/ports/logger";
 import { showAttachTaskWindow, showPostCaptureChoiceWindow, showTaskFormWindow } from "./windows";
+import type { PendingCapture } from "./index";
 
 export interface IpcHandlerDeps {
   captureAndCreateTask: CaptureAndCreateTask;
   loadSettings: LoadSettings;
   saveSettings: SaveSettings;
   listKaitenOptions: ListKaitenOptions;
-  getPendingCapture: () => { region: CaptureRegion; image: CapturedImage } | null;
+  getPendingCapture: () => PendingCapture | null;
   clearPendingCapture: () => void;
-  /** Перерегистрирует глобальный хоткей захвата — вызывается, если пользователь
-   * изменил captureHotkey в настройках, чтобы изменение подействовало без рестарта. */
-  reregisterCaptureHotkey: (accelerator: string) => void;
+  /** Перерегистрирует оба глобальных хоткея (захват + запись) — вызывается, если
+   * пользователь изменил captureHotkey/recordHotkey в настройках, чтобы изменение
+   * подействовало без рестарта. */
+  reregisterHotkeys: (config: Pick<AppConfig, "captureHotkey" | "recordHotkey">) => void;
   /** Применяет настройку автозапуска на уровне ОС — вызывается, если пользователь
    * изменил autostart в настройках. */
   applyAutostart: (enabled: boolean) => void;
@@ -41,6 +43,10 @@ export interface IpcHandlerDeps {
    * переприменяются, если изменились). Возвращает false при отмене диалога. */
   importProjectConfig: (window: BrowserWindow | undefined) => Promise<boolean>;
   logger: Logger;
+}
+
+function attachmentOf(pending: PendingCapture): Attachment {
+  return pending.kind === "image" ? pending.image : pending.video;
 }
 
 /** Регистрирует IPC-хендлеры, вызывающие use-cases из application/. Ничего не решает сама —
@@ -54,16 +60,19 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     if (!pending) {
       return null;
     }
-    const imageDataUrl = nativeImage.createFromBuffer(pending.image.buffer).toDataURL();
-    return {
-      region: {
-        x: pending.region.x,
-        y: pending.region.y,
-        width: pending.region.width,
-        height: pending.region.height,
-      },
-      imageDataUrl,
+    logger.debug("IpcHandlers.getPendingCapture", "returning pending capture", { kind: pending.kind });
+    const region = {
+      x: pending.region.x,
+      y: pending.region.y,
+      width: pending.region.width,
+      height: pending.region.height,
     };
+    if (pending.kind === "video") {
+      const videoDataUrl = `data:video/webm;base64,${pending.video.buffer.toString("base64")}`;
+      return { kind: "video", region, videoDataUrl };
+    }
+    const imageDataUrl = nativeImage.createFromBuffer(pending.image.buffer).toDataURL();
+    return { kind: "image", region, imageDataUrl };
   });
 
   ipcMain.handle(
@@ -72,9 +81,13 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
       logger.debug("IpcHandlers.submitTask", "requested", { boardId: input.boardId, laneId: input.laneId });
       const pending = deps.getPendingCapture();
       if (!pending) {
-        throw new Error("No pending screenshot to submit — capture a region first");
+        throw new Error("No pending capture to submit — capture a region first");
       }
-      const result = await deps.captureAndCreateTask.submitStep(input, pending.image, input.participantIds ?? []);
+      const result = await deps.captureAndCreateTask.submitStep(
+        input,
+        attachmentOf(pending),
+        input.participantIds ?? [],
+      );
       deps.clearPendingCapture();
       return {
         taskId: result.task.id,
@@ -91,8 +104,13 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     IPC_CHANNELS.saveSettings,
     async (_event, input: SaveSettingsInputDto): Promise<void> => {
       await deps.saveSettings.execute(input);
-      if (input.config?.captureHotkey) {
-        deps.reregisterCaptureHotkey(input.config.captureHotkey);
+      if (input.config?.captureHotkey || input.config?.recordHotkey) {
+        logger.debug("IpcHandlers.saveSettings", "hotkey changed, reregistering", {
+          captureHotkey: Boolean(input.config?.captureHotkey),
+          recordHotkey: Boolean(input.config?.recordHotkey),
+        });
+        const { config } = await deps.loadSettings.execute();
+        deps.reregisterHotkeys(config);
       }
       if (input.config?.autostart !== undefined) {
         deps.applyAutostart(input.config.autostart);
@@ -156,9 +174,9 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     logger.debug("IpcHandlers.attachToExistingCard", "requested", { cardId });
     const pending = deps.getPendingCapture();
     if (!pending) {
-      throw new Error("No pending screenshot to attach — capture a region first");
+      throw new Error("No pending capture to attach — capture a region first");
     }
-    await deps.captureAndCreateTask.attachToExistingCard(cardId, pending.image);
+    await deps.captureAndCreateTask.attachToExistingCard(cardId, attachmentOf(pending));
     deps.clearPendingCapture();
     // Окно не закрывается автоматически — renderer показывает состояние успеха
     // (как в TaskForm) и закрывает окно сам по клику пользователя.
@@ -169,6 +187,12 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     const pending = deps.getPendingCapture();
     if (!pending) {
       throw new Error("No pending screenshot to copy — capture a region first");
+    }
+    if (pending.kind === "video") {
+      // UI не должен показывать эту кнопку для видео (см. PostCaptureChoice.tsx) —
+      // сюда доходим только при рассинхронизации, не ожидаемый путь выполнения.
+      logger.warn("IpcHandlers.copyToClipboard", "attempted to copy a video attachment to clipboard");
+      throw new Error("Copying a video recording to the clipboard is not supported");
     }
     clipboard.writeImage(nativeImage.createFromBuffer(pending.image.buffer));
     deps.clearPendingCapture();
