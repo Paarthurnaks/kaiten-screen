@@ -16,6 +16,7 @@ export function Settings() {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [captureHotkey, setCaptureHotkey] = useState("");
+  const [recordHotkey, setRecordHotkey] = useState("");
   const [autostart, setAutostart] = useState(false);
 
   // Локальные моковые настройки — не персистятся, нет соответствующего эндпоинта/
@@ -48,6 +49,7 @@ export function Settings() {
   function applyConfig(config: AppConfigShape): void {
     setKaitenDomain(config.kaitenDomain);
     setCaptureHotkey(config.captureHotkey);
+    setRecordHotkey(config.recordHotkey);
     setAutostart(config.autostart);
     setSpaceId(config.defaultSpaceId ?? "");
     setDefaultBoardId(config.defaultBoardId ?? "");
@@ -129,6 +131,7 @@ export function Settings() {
         defaultLaneId: defaultLaneId || null,
         defaultResponsibleId: defaultResponsibleId || null,
         captureHotkey,
+        recordHotkey,
         autostart,
       },
       apiKey: apiKeyInput.length > 0 ? apiKeyInput : undefined,
@@ -386,6 +389,20 @@ export function Settings() {
               value={captureHotkey}
               onChange={(event) => setCaptureHotkey(event.target.value)}
               placeholder="CommandOrControl+Shift+K"
+            />
+          </div>
+
+          <div className="ks-toggle-row">
+            <div className="ks-toggle-label">
+              <span className="ks-toggle-label-title">Хоткей записи видео</span>
+              <span className="ks-toggle-label-subtitle">Одна клавиша: старт и стоп записи</span>
+            </div>
+            <input
+              className="ks-chip-mono"
+              style={{ width: 180, textAlign: "center", border: "1px solid var(--ks-border-strong)" }}
+              value={recordHotkey}
+              onChange={(event) => setRecordHotkey(event.target.value)}
+              placeholder="CommandOrControl+Shift+R"
             />
           </div>
 

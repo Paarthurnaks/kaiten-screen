@@ -64,12 +64,16 @@ export function PostCaptureChoice() {
               background: "var(--ks-bg-subtle)",
             }}
           >
-            <img src={pending.imageDataUrl} alt="Скриншот" style={{ display: "block", width: "100%" }} />
+            {pending.kind === "video" ? (
+              <video src={pending.videoDataUrl} controls style={{ display: "block", width: "100%" }} />
+            ) : (
+              <img src={pending.imageDataUrl} alt="Скриншот" style={{ display: "block", width: "100%" }} />
+            )}
           </div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="ks-card-title">Скриншот готов</div>
+          <div className="ks-card-title">{pending?.kind === "video" ? "Запись готова" : "Скриншот готов"}</div>
           {pending && (
             <div className="ks-chip-mono">
               {pending.region.width}×{pending.region.height}
@@ -93,13 +97,15 @@ export function PostCaptureChoice() {
             disabled={busy || loading}
             onClick={() => void handleAttachExisting()}
           />
-          <ActionButton
-            icon="📋"
-            title="Скопировать в буфер обмена"
-            subtitle="Без создания карточки в Kaiten"
-            disabled={busy || loading}
-            onClick={() => void handleCopyToClipboard()}
-          />
+          {pending?.kind !== "video" && (
+            <ActionButton
+              icon="📋"
+              title="Скопировать в буфер обмена"
+              subtitle="Без создания карточки в Kaiten"
+              disabled={busy || loading}
+              onClick={() => void handleCopyToClipboard()}
+            />
+          )}
           <button
             type="button"
             className="ks-btn ks-btn-ghost"
