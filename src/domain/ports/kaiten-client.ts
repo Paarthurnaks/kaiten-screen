@@ -1,5 +1,5 @@
 import type { TaskDraft } from "../entities/task-draft";
-import type { CapturedImage } from "../entities/captured-image";
+import type { Attachment } from "../entities/attachment";
 
 export interface KaitenSpace {
   id: string;
@@ -57,7 +57,7 @@ export interface KaitenCreatedTask {
  */
 export interface KaitenClient {
   createTask(draft: TaskDraft): Promise<KaitenCreatedTask>;
-  attachFile(taskId: string, image: CapturedImage): Promise<void>;
+  attachFile(taskId: string, attachment: Attachment): Promise<void>;
   addCardMember(taskId: string, userId: string): Promise<void>;
   listSpaces(): Promise<KaitenSpace[]>;
   listBoards(spaceId: string): Promise<KaitenBoard[]>;

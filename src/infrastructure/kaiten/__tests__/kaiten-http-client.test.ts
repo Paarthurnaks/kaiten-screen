@@ -18,6 +18,8 @@ function createConfigStore(overrides: Partial<AppConfig> = {}): ConfigStore {
     defaultLaneId: null,
     defaultResponsibleId: null,
     captureHotkey: "CommandOrControl+Shift+K",
+    recordHotkey: "CommandOrControl+Shift+R",
+    recordingMaxDurationSec: 300,
     autostart: false,
     ...overrides,
   };
