@@ -1,5 +1,6 @@
 import { TaskDraft, type TaskDraftInput } from "../domain/entities/task-draft";
 import type { CapturedImage } from "../domain/entities/captured-image";
+import type { Attachment } from "../domain/entities/attachment";
 import type { CaptureRegion } from "../domain/value-objects/capture-region";
 import type { ScreenCaptureProvider } from "../domain/ports/screen-capture-provider";
 import type { KaitenClient, KaitenCreatedTask } from "../domain/ports/kaiten-client";
@@ -41,7 +42,7 @@ export class CaptureAndCreateTask {
 
   async submitStep(
     draftInput: TaskDraftInput,
-    image: CapturedImage,
+    attachment: Attachment,
     participantIds: string[] = [],
   ): Promise<SubmitTaskResult> {
     // TaskDraft.create бросает DomainValidationError при некорректных данных —
@@ -74,7 +75,7 @@ export class CaptureAndCreateTask {
     }
 
     try {
-      await this.kaiten.attachFile(task.id, image);
+      await this.kaiten.attachFile(task.id, attachment);
       this.logger.info("CaptureAndCreateTask.submitStep", "attachment uploaded", { taskId: task.id });
       return { task, attachmentFailed: false, membersFailed };
     } catch (err) {
@@ -88,9 +89,9 @@ export class CaptureAndCreateTask {
 
   /** Прикрепляет уже захваченный скриншот к существующей карточке (экран «Прикрепить
    * к существующей»), минуя создание новой задачи. */
-  async attachToExistingCard(cardId: string, image: CapturedImage): Promise<void> {
+  async attachToExistingCard(cardId: string, attachment: Attachment): Promise<void> {
     this.logger.debug("CaptureAndCreateTask.attachToExistingCard", "attaching to existing card", { cardId });
-    await this.kaiten.attachFile(cardId, image);
+    await this.kaiten.attachFile(cardId, attachment);
     this.logger.info("CaptureAndCreateTask.attachToExistingCard", "attachment uploaded", { cardId });
   }
 }
