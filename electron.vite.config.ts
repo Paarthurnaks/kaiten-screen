@@ -27,6 +27,10 @@ export default defineConfig({
   },
   renderer: {
     root: "src/renderer",
+    // localhost на этой машине резолвится в IPv6 (::1) быстрее/раньше, чем в 127.0.0.1,
+    // а Electron/Chromium подключается по IPv4 — без явного host dev-сервер слушал
+    // только IPv6 и все окна падали с ERR_CONNECTION_REFUSED.
+    server: { host: "127.0.0.1" },
     build: {
       rollupOptions: {
         input: {
