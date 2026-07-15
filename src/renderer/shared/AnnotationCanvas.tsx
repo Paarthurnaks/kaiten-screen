@@ -134,53 +134,71 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCan
       }
     }, [image, shapes, draft]);
 
-    function getCanvasPoint(event: React.MouseEvent<HTMLCanvasElement>): Point {
+    function getCanvasPoint(clientX: number, clientY: number): Point {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       return {
-        x: (event.clientX - rect.left) * scaleX,
-        y: (event.clientY - rect.top) * scaleY,
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY,
       };
     }
 
     function handleMouseDown(event: React.MouseEvent<HTMLCanvasElement>): void {
       if (!activeTool) return;
-      const point = getCanvasPoint(event);
+      const point = getCanvasPoint(event.clientX, event.clientY);
       dragStart.current = point;
       setDraft(makeShape(activeTool, point, point, activeColor, "draft"));
       console.debug(LOG_PREFIX, "started drawing", { tool: activeTool, color: activeColor });
     }
 
-    function handleMouseMove(event: React.MouseEvent<HTMLCanvasElement>): void {
-      if (!activeTool || !dragStart.current) return;
-      const point = getCanvasPoint(event);
-      setDraft(makeShape(activeTool, dragStart.current, point, activeColor, "draft"));
-    }
-
-    function handleMouseUp(event: React.MouseEvent<HTMLCanvasElement>): void {
-      if (!activeTool || !dragStart.current) return;
-      const from = dragStart.current;
-      const to = getCanvasPoint(event);
-      dragStart.current = null;
-      setDraft(null);
-      if (isTooSmall(from, to)) {
-        console.debug(LOG_PREFIX, "shape too small — discarded", { tool: activeTool });
-        return;
+    // mousemove/mouseup слушаются на window, а не на самом canvas — иначе жест
+    // рисования обрывался, если курсор во время drag покидал границы canvas
+    // (например, уезжал на кнопку "Создать новую задачу" под превью): нативный
+    // mouseup долетает до элемента под курсором, а не до canvas, из-за чего
+    // фигура либо молча терялась (не successfully коммитилась в shapes), либо —
+    // если до этого уже была подтверждена другая фигура — "призрачная"
+    // недокоммиченная фигура всё равно попадала в экспортируемый PNG (пиксели
+    // canvas не завязаны на React-state), но была невидима для Undo/Очистить
+    // всё. По тому же паттерну, что и полноэкранный контейнер в
+    // CaptureOverlay.tsx, drag теперь отслеживается, пока курсор в пределах
+    // всего окна, а не только самого canvas.
+    useEffect(() => {
+      function handleWindowMouseMove(event: MouseEvent): void {
+        if (!activeTool || !dragStart.current) return;
+        const point = getCanvasPoint(event.clientX, event.clientY);
+        setDraft(makeShape(activeTool, dragStart.current, point, activeColor, "draft"));
       }
-      const shape = makeShape(activeTool, from, to, activeColor, crypto.randomUUID());
-      console.debug(LOG_PREFIX, "shape committed", { tool: activeTool, color: activeColor });
-      onShapeCommitted(shape);
-    }
+
+      function handleWindowMouseUp(event: MouseEvent): void {
+        if (!activeTool || !dragStart.current) return;
+        const from = dragStart.current;
+        const to = getCanvasPoint(event.clientX, event.clientY);
+        dragStart.current = null;
+        setDraft(null);
+        if (isTooSmall(from, to)) {
+          console.debug(LOG_PREFIX, "shape too small — discarded", { tool: activeTool });
+          return;
+        }
+        const shape = makeShape(activeTool, from, to, activeColor, crypto.randomUUID());
+        console.debug(LOG_PREFIX, "shape committed", { tool: activeTool, color: activeColor });
+        onShapeCommitted(shape);
+      }
+
+      window.addEventListener("mousemove", handleWindowMouseMove);
+      window.addEventListener("mouseup", handleWindowMouseUp);
+      return () => {
+        window.removeEventListener("mousemove", handleWindowMouseMove);
+        window.removeEventListener("mouseup", handleWindowMouseUp);
+      };
+    }, [activeTool, activeColor, onShapeCommitted]);
 
     return (
       <canvas
         ref={canvasRef}
         style={{ width: "100%", display: "block", cursor: activeTool ? "crosshair" : "default" }}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
       />
     );
   },
