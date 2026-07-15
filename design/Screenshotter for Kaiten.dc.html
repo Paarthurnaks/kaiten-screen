@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: oklch(0.14 0.008 250); font-family: 'Manrope', system-ui, sans-serif; }
+    ::selection { background: oklch(0.6 0.15 165 / 0.35); }
+  </style>
+</helmet>
+
+<div style="min-height: 100vh; padding: 72px 40px 120px; display: flex; flex-direction: column; align-items: center; gap: 96px;">
+
+  <div style="text-align: center; max-width: 640px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.6 0.15 165);">Kaiten Screenshotter — MVP</div>
+    <div style="font-size: 15px; color: oklch(0.6 0.01 250); line-height: 1.5;">Пять ключевых экранов: захват области, выбор действия, создание задачи, поиск и прикрепление, настройки.</div>
+  </div>
+
+  <!-- SCREEN 1: CAPTURE -->
+  <div data-screen-label="01 — Захват области" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">01 · Захват области экрана</div>
+    <div style="width: 1280px; height: 800px; border-radius: 14px; overflow: hidden; position: relative; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.19 0.01 250);">
+      <!-- fake desktop content behind overlay -->
+      <div style="position: absolute; inset: 0; background: oklch(0.22 0.012 250); display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 16px;">
+        <div style="background: oklch(0.19 0.012 250); border-radius: 10px; border: 1px solid oklch(0.28 0.012 250);"></div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="height: 56px; background: oklch(0.19 0.012 250); border-radius: 10px; border: 1px solid oklch(0.28 0.012 250);"></div>
+          <div style="flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+            <div style="background: oklch(0.19 0.012 250); border-radius: 10px; border: 1px solid oklch(0.28 0.012 250);"></div>
+            <div style="background: oklch(0.19 0.012 250); border-radius: 10px; border: 1px solid oklch(0.28 0.012 250);"></div>
+            <div style="background: oklch(0.19 0.012 250); border-radius: 10px; border: 1px solid oklch(0.28 0.012 250);"></div>
+            <div style="background: oklch(0.19 0.012 250); border-radius: 10px; border: 1px solid oklch(0.28 0.012 250);"></div>
+          </div>
+        </div>
+      </div>
+      <!-- dim overlay with cutout -->
+      <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.55);"></div>
+      <!-- selection area (bright cutout) -->
+      <div style="position: absolute; left: 360px; top: 210px; width: 560px; height: 340px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.55); background: transparent; outline: 1.5px dashed oklch(0.6 0.15 165); outline-offset: 0;">
+        <div style="position: absolute; inset: 0; background: oklch(0.22 0.012 250); mix-blend-mode: normal; opacity: 0;"></div>
+        <!-- corner handles -->
+        <div style="position: absolute; width: 9px; height: 9px; border-radius: 2px; background: oklch(0.6 0.15 165); left: -5px; top: -5px;"></div>
+        <div style="position: absolute; width: 9px; height: 9px; border-radius: 2px; background: oklch(0.6 0.15 165); right: -5px; top: -5px;"></div>
+        <div style="position: absolute; width: 9px; height: 9px; border-radius: 2px; background: oklch(0.6 0.15 165); left: -5px; bottom: -5px;"></div>
+        <div style="position: absolute; width: 9px; height: 9px; border-radius: 2px; background: oklch(0.6 0.15 165); right: -5px; bottom: -5px;"></div>
+        <!-- dimension label -->
+        <div style="position: absolute; top: -32px; left: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: oklch(0.92 0.005 250); background: oklch(0.24 0.014 250); border: 1px solid oklch(0.34 0.014 250); padding: 4px 8px; border-radius: 6px;">560 × 340</div>
+      </div>
+      <!-- floating toolbar under selection -->
+      <div style="position: absolute; left: 360px; top: 562px; width: 560px; display: flex; justify-content: center;">
+        <div style="display: flex; align-items: center; gap: 6px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); border-radius: 12px; padding: 6px; box-shadow: 0 12px 24px -8px rgba(0,0,0,0.5);">
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.65 0.01 250); cursor: pointer;" title="Отмена">✕</div>
+          <div style="width: 1px; height: 20px; background: oklch(0.32 0.014 250);"></div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.65 0.01 250); cursor: pointer;" title="Во весь экран">⛶</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.65 0.01 250); cursor: pointer;" title="Заново">↺</div>
+          <div style="width: 1px; height: 20px; background: oklch(0.32 0.014 250);"></div>
+          <div style="height: 36px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.02 165); font-weight: 700; font-size: 14px; cursor: pointer;">✓ Готово</div>
+        </div>
+      </div>
+      <!-- hint -->
+      <div style="position: absolute; left: 50%; top: 24px; transform: translateX(-50%); font-size: 13px; color: oklch(0.8 0.01 250); background: oklch(0.2 0.012 250 / 0.85); padding: 8px 14px; border-radius: 8px; border: 1px solid oklch(0.3 0.012 250);">Выделите область экрана · <span style="font-family: 'JetBrains Mono', monospace; opacity: 0.7;">Esc</span> — отмена</div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: ANNOTATION -->
+  <div data-screen-label="02 — Аннотирование" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">02 · Аннотирование скриншота</div>
+    <div style="width: 1000px; border-radius: 14px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.17 0.01 250); display: flex; flex-direction: column;">
+      <!-- toolbar -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid oklch(0.26 0.012 250); background: oklch(0.19 0.011 250);">
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.85 0.005 250); cursor: pointer;" title="Курсор">↖</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); cursor: pointer;" title="Стрелка">↗</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.75 0.008 250); cursor: pointer;" title="Прямоугольник">▢</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.75 0.008 250); cursor: pointer;" title="Эллипс">○</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.75 0.008 250); font-weight: 700; cursor: pointer;" title="Текст">T</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.75 0.008 250); cursor: pointer;" title="Маркер">✎</div>
+          <div style="width: 1px; height: 22px; background: oklch(0.3 0.012 250); margin: 0 4px;"></div>
+          <div style="display: flex; align-items: center; gap: 6px; padding: 0 4px;">
+            <div style="width: 20px; height: 20px; border-radius: 50%; background: oklch(0.62 0.19 25); border: 2px solid oklch(0.92 0.005 250); cursor: pointer;"></div>
+            <div style="width: 20px; height: 20px; border-radius: 50%; background: oklch(0.6 0.15 165); cursor: pointer;"></div>
+            <div style="width: 20px; height: 20px; border-radius: 50%; background: oklch(0.65 0.16 95); cursor: pointer;"></div>
+            <div style="width: 20px; height: 20px; border-radius: 50%; background: oklch(0.6 0.14 250); cursor: pointer;"></div>
+            <div style="width: 20px; height: 20px; border-radius: 50%; background: oklch(0.94 0.005 250); cursor: pointer;"></div>
+          </div>
+          <div style="width: 1px; height: 22px; background: oklch(0.3 0.012 250); margin: 0 4px;"></div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.75 0.008 250); cursor: pointer;" title="Отменить">↺</div>
+          <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: oklch(0.75 0.008 250); cursor: pointer;" title="Вернуть">↻</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="padding: 8px 14px; border-radius: 8px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.8 0.008 250); font-size: 13px; font-weight: 600; cursor: pointer;">Отмена</div>
+          <div style="padding: 8px 16px; border-radius: 8px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); font-size: 13px; font-weight: 700; cursor: pointer;">✓ Готово</div>
+        </div>
+      </div>
+      <!-- canvas -->
+      <div style="position: relative; height: 520px; background: oklch(0.22 0.012 250); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <div style="position: absolute; inset: 0; background: repeating-linear-gradient(135deg, oklch(0.235 0.012 250) 0px, oklch(0.235 0.012 250) 14px, oklch(0.22 0.012 250) 14px, oklch(0.22 0.012 250) 28px);"></div>
+        <!-- rectangle annotation -->
+        <div style="position: absolute; left: 120px; top: 90px; width: 260px; height: 150px; border: 3px solid oklch(0.62 0.19 25); border-radius: 4px;"></div>
+        <!-- arrow annotation -->
+        <svg style="position: absolute; left: 430px; top: 260px; width: 200px; height: 120px;" viewBox="0 0 200 120">
+          <line x1="10" y1="110" x2="170" y2="20" stroke="oklch(0.6 0.15 165)" stroke-width="5" stroke-linecap="round"/>
+          <polygon points="170,20 148,26 158,44" fill="oklch(0.6 0.15 165)"/>
+        </svg>
+        <!-- text annotation -->
+        <div style="position: absolute; left: 620px; top: 130px; font-size: 20px; font-weight: 800; color: oklch(0.94 0.005 250); text-shadow: 0 1px 3px rgba(0,0,0,0.6); font-family: 'Manrope', sans-serif;">Здесь баг ↴</div>
+        <!-- marker highlight -->
+        <div style="position: absolute; left: 130px; top: 320px; width: 180px; height: 26px; background: oklch(0.65 0.16 95 / 0.45); border-radius: 3px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: POST CAPTURE CHOICE -->
+  <div data-screen-label="03 — Выбор действия" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">03 · Что сделать со скриншотом</div>
+    <div style="width: 420px; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.17 0.01 250); display: flex; flex-direction: column;">
+      <div style="padding: 16px 20px 0;">
+        <div style="width: 100%; aspect-ratio: 560/340; border-radius: 10px; background: oklch(0.22 0.012 250); border: 1px solid oklch(0.3 0.012 250); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(135deg, oklch(0.24 0.012 250) 0px, oklch(0.24 0.012 250) 10px, oklch(0.22 0.012 250) 10px, oklch(0.22 0.012 250) 20px);"></div>
+          <div style="position: relative; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: oklch(0.55 0.01 250); background: oklch(0.17 0.01 250 / 0.85); padding: 6px 10px; border-radius: 6px;">снимок области · 560×340</div>
+        </div>
+      </div>
+      <div style="padding: 18px 20px 6px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-size: 15px; font-weight: 700; color: oklch(0.92 0.005 250);">Скриншот готов</div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: oklch(0.5 0.01 250);">560×340</div>
+      </div>
+      <div style="padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); cursor: pointer;">
+          <div style="font-size: 18px;">＋</div>
+          <div style="display: flex; flex-direction: column;">
+            <div style="font-weight: 700; font-size: 14.5px;">Создать новую задачу</div>
+            <div style="font-size: 12.5px; opacity: 0.75;">Заполнить карточку с нуля</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.92 0.005 250); cursor: pointer;">
+          <div style="font-size: 18px;">📎</div>
+          <div style="display: flex; flex-direction: column;">
+            <div style="font-weight: 700; font-size: 14.5px;">Прикрепить к существующей</div>
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250);">Найти задачу по ID или названию</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.92 0.005 250); cursor: pointer;">
+          <div style="font-size: 18px;">⧉</div>
+          <div style="display: flex; flex-direction: column;">
+            <div style="font-weight: 700; font-size: 14.5px;">Скопировать в буфер обмена</div>
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250);">Вставить куда угодно (Ctrl+V)</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.92 0.005 250); cursor: pointer;">
+          <div style="font-size: 18px;">⭳</div>
+          <div style="display: flex; flex-direction: column;">
+            <div style="font-weight: 700; font-size: 14.5px;">Сохранить в файл</div>
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250);">Экспорт в PNG на диск</div>
+          </div>
+        </div>
+        <div style="text-align: center; padding-top: 4px; font-size: 13px; color: oklch(0.5 0.01 250); cursor: pointer;">Отмена</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: SESSION HISTORY TIMELINE -->
+  <div data-screen-label="04 — История сессии" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">04 · История скриншотов сессии</div>
+    <div style="width: 1000px; border-radius: 14px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.17 0.01 250); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-size: 13px; font-weight: 700; color: oklch(0.85 0.005 250);">Недавние скриншоты</div>
+        <div style="font-size: 12px; color: oklch(0.5 0.01 250);">За эту сессию · 6</div>
+      </div>
+      <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px;">
+        <div style="flex-shrink: 0; width: 148px; height: 96px; border-radius: 9px; background: repeating-linear-gradient(135deg, oklch(0.24 0.012 250) 0px, oklch(0.24 0.012 250) 8px, oklch(0.21 0.012 250) 8px, oklch(0.21 0.012 250) 16px); border: 2px solid oklch(0.6 0.15 165); position: relative;">
+          <div style="position: absolute; bottom: 6px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.9 0.005 250); background: oklch(0.15 0.01 250 / 0.75); padding: 2px 6px; border-radius: 4px;">только сейчас</div>
+          <div style="position: absolute; top: 6px; right: 6px; font-size: 12px; color: oklch(0.6 0.15 165);">✓</div>
+        </div>
+        <div style="flex-shrink: 0; width: 148px; height: 96px; border-radius: 9px; background: repeating-linear-gradient(135deg, oklch(0.24 0.012 250) 0px, oklch(0.24 0.012 250) 8px, oklch(0.21 0.012 250) 8px, oklch(0.21 0.012 250) 16px); border: 1px solid oklch(0.3 0.012 250); position: relative;">
+          <div style="position: absolute; bottom: 6px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.7 0.008 250); background: oklch(0.15 0.01 250 / 0.75); padding: 2px 6px; border-radius: 4px;">3 мин назад</div>
+        </div>
+        <div style="flex-shrink: 0; width: 148px; height: 96px; border-radius: 9px; background: repeating-linear-gradient(135deg, oklch(0.24 0.012 250) 0px, oklch(0.24 0.012 250) 8px, oklch(0.21 0.012 250) 8px, oklch(0.21 0.012 250) 16px); border: 1px solid oklch(0.3 0.012 250); position: relative;">
+          <div style="position: absolute; bottom: 6px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.7 0.008 250); background: oklch(0.15 0.01 250 / 0.75); padding: 2px 6px; border-radius: 4px;">12 мин назад</div>
+          <div style="position: absolute; top: 6px; right: 6px; font-size: 11px; color: oklch(0.6 0.15 165);">📎 #66730627</div>
+        </div>
+        <div style="flex-shrink: 0; width: 148px; height: 96px; border-radius: 9px; background: repeating-linear-gradient(135deg, oklch(0.24 0.012 250) 0px, oklch(0.24 0.012 250) 8px, oklch(0.21 0.012 250) 8px, oklch(0.21 0.012 250) 16px); border: 1px solid oklch(0.3 0.012 250); position: relative;">
+          <div style="position: absolute; bottom: 6px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.7 0.008 250); background: oklch(0.15 0.01 250 / 0.75); padding: 2px 6px; border-radius: 4px;">27 мин назад</div>
+        </div>
+        <div style="flex-shrink: 0; width: 148px; height: 96px; border-radius: 9px; background: repeating-linear-gradient(135deg, oklch(0.24 0.012 250) 0px, oklch(0.24 0.012 250) 8px, oklch(0.21 0.012 250) 8px, oklch(0.21 0.012 250) 16px); border: 1px solid oklch(0.3 0.012 250); position: relative;">
+          <div style="position: absolute; bottom: 6px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.7 0.008 250); background: oklch(0.15 0.01 250 / 0.75); padding: 2px 6px; border-radius: 4px;">41 мин назад</div>
+        </div>
+        <div style="flex-shrink: 0; width: 148px; height: 96px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: oklch(0.2 0.012 250); border: 1.5px dashed oklch(0.35 0.014 250); color: oklch(0.5 0.01 250); font-size: 12px;">Ещё 1 →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: CREATE TASK FORM -->
+  <div data-screen-label="05 — Создание задачи" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">05 · Создание новой задачи</div>
+    <div style="width: 480px; max-height: 820px; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.17 0.01 250); display: flex; flex-direction: column;">
+      <!-- header -->
+      <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid oklch(0.26 0.012 250);">
+        <div style="font-size: 15px; font-weight: 700; color: oklch(0.92 0.005 250);">Новая задача</div>
+        <div style="color: oklch(0.55 0.01 250); cursor: pointer; font-size: 15px;">✕</div>
+      </div>
+      <!-- scroll body -->
+      <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+
+        <!-- attached screenshot -->
+        <div style="display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 10px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.28 0.012 250);">
+          <div style="width: 56px; height: 40px; border-radius: 6px; background: repeating-linear-gradient(135deg, oklch(0.28 0.012 250) 0px, oklch(0.28 0.012 250) 6px, oklch(0.24 0.012 250) 6px, oklch(0.24 0.012 250) 12px); flex-shrink: 0;"></div>
+          <div style="flex: 1; font-size: 13px; color: oklch(0.75 0.01 250);">screenshot_04.png <span style="color: oklch(0.5 0.01 250);">· 560×340</span></div>
+          <div style="color: oklch(0.5 0.01 250); font-size: 13px; cursor: pointer;">Изменить</div>
+        </div>
+
+        <!-- title -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Заголовок</div>
+          <div style="padding: 10px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.32 0.014 250); font-size: 14.5px; color: oklch(0.92 0.005 250);">Статус класса не поменялся после публикации</div>
+        </div>
+
+        <!-- location: space / board / column / swimlane -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Пространство</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Команда <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Доска</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Sprint <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Колонка</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Бэклог задач <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Дорожка</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Bugfix/Прочее <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+          </div>
+        </div>
+
+        <!-- assignee + type -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Ответственный</div>
+            <div style="padding: 7px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; align-items: center; gap: 8px;">
+              <div style="width: 20px; height: 20px; border-radius: 50%; background: oklch(0.6 0.15 165); font-size: 10px; display: flex; align-items: center; justify-content: center; color: oklch(0.15 0.02 165); font-weight: 700;">МШ</div>
+              Максим Ш.
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Тип</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">
+              <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: oklch(0.62 0.19 25); display: inline-block;"></span>Bug</span> <span style="color: oklch(0.5 0.01 250);">▾</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- custom fields -->
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid oklch(0.24 0.012 250);">
+          <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600; padding-top: 10px;">Пользовательские поля</div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Окружение</div>
+            <div style="display: flex; gap: 6px;">
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.32 0.09 95); color: oklch(0.9 0.06 95); border: 1.5px solid oklch(0.6 0.13 95);">DEV</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">PROD</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12px; color: oklch(0.55 0.01 250);">End</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.32 0.08 200); color: oklch(0.9 0.05 200); border: 1.5px solid oklch(0.6 0.11 200);">Frontend</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">Backend</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">Frontend и Backend</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Продукт</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">DP</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.32 0.1 340); color: oklch(0.9 0.07 340); border: 1.5px solid oklch(0.6 0.15 340);">ISM</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">ID</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">PBS</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">IPDB</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Серьёзность</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.32 0.12 25); color: oklch(0.9 0.08 25); border: 1.5px solid oklch(0.6 0.17 25);">Критический</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">Высокий</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">Незначительный</div>
+              <div style="padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: oklch(0.22 0.012 250); color: oklch(0.6 0.01 250); border: 1.5px solid oklch(0.3 0.012 250);">Низкий</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- description -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Описание</div>
+          <div style="padding: 10px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.75 0.008 250); line-height: 1.6; min-height: 90px;">
+            <div><b style="color: oklch(0.88 0.005 250);">Фактический результат:</b> статус не обновляется</div>
+            <div><b style="color: oklch(0.88 0.005 250);">Ожидаемый результат:</b> статус переключается на "готово"</div>
+          </div>
+        </div>
+
+        <!-- participants + status -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Участники</div>
+            <div style="display: flex; align-items: center; gap: -6px;">
+              <div style="width: 26px; height: 26px; border-radius: 50%; background: oklch(0.4 0.05 260); border: 2px solid oklch(0.17 0.01 250); font-size: 10px; display: flex; align-items: center; justify-content: center; color: oklch(0.9 0.01 260); margin-right: -8px;">СП</div>
+              <div style="width: 26px; height: 26px; border-radius: 50%; background: oklch(0.45 0.06 30); border: 2px solid oklch(0.17 0.01 250); font-size: 10px; display: flex; align-items: center; justify-content: center; color: oklch(0.9 0.01 30); margin-right: -8px;">МШ</div>
+              <div style="width: 26px; height: 26px; border-radius: 50%; background: oklch(0.24 0.013 250); border: 1.5px dashed oklch(0.4 0.014 250); font-size: 13px; display: flex; align-items: center; justify-content: center; color: oklch(0.6 0.01 250);">＋</div>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.6 0.01 250); font-weight: 600;">Статус</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Очередь <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div style="padding: 14px 20px; border-top: 1px solid oklch(0.26 0.012 250); display: flex; gap: 10px;">
+        <div style="flex: 1; text-align: center; padding: 11px; border-radius: 9px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.75 0.008 250); font-size: 14px; font-weight: 600; cursor: pointer;">Отмена</div>
+        <div style="flex: 2; text-align: center; padding: 11px; border-radius: 9px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); font-size: 14px; font-weight: 700; cursor: pointer;">Создать задачу</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: ATTACH TO EXISTING -->
+  <div data-screen-label="06 — Поиск и прикрепление" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">06 · Прикрепление к существующей задаче</div>
+    <div style="width: 480px; max-height: 720px; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.17 0.01 250); display: flex; flex-direction: column;">
+      <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid oklch(0.26 0.012 250);">
+        <div style="font-size: 15px; font-weight: 700; color: oklch(0.92 0.005 250);">Прикрепить к задаче</div>
+        <div style="color: oklch(0.55 0.01 250); cursor: pointer; font-size: 15px;">✕</div>
+      </div>
+
+      <div style="padding: 16px 20px 0;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 9px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.34 0.02 165);">
+          <span style="color: oklch(0.6 0.01 250); font-size: 14px;">🔍</span>
+          <span style="font-size: 14px; color: oklch(0.9 0.005 250);">66730627</span>
+          <span style="font-size: 13px; color: oklch(0.5 0.01 250);">или название задачи…</span>
+        </div>
+      </div>
+
+      <div style="padding: 14px 20px 4px; font-size: 12px; color: oklch(0.5 0.01 250); font-weight: 600;">РЕЗУЛЬТАТЫ · 3</div>
+
+      <div style="padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;">
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; background: oklch(0.24 0.05 165 / 0.35); border: 1.5px solid oklch(0.6 0.15 165);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="font-size: 13.5px; color: oklch(0.94 0.005 250); font-weight: 600; line-height: 1.4;">Статус класса не поменялся после второй публикации изменении в диапазонах</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.6 0.15 165); flex-shrink: 0;">#66730627</div>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: oklch(0.32 0.09 95); color: oklch(0.9 0.06 95);">DEV</div>
+            <div style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: oklch(0.32 0.1 340); color: oklch(0.9 0.07 340);">ISM</div>
+            <div style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: oklch(0.28 0.06 230); color: oklch(0.85 0.05 230);">Незначительный</div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid transparent; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="font-size: 13.5px; color: oklch(0.85 0.005 250); font-weight: 600; line-height: 1.4;">Не совпадает формат тэга у родительского и дочернего класса</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.5 0.01 250); flex-shrink: 0;">#66701122</div>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: oklch(0.28 0.06 25); color: oklch(0.8 0.06 25);">Блокирующий</div>
+            <div style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: oklch(0.32 0.1 340); color: oklch(0.9 0.07 340);">ISM</div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid transparent; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="font-size: 13.5px; color: oklch(0.85 0.005 250); font-weight: 600; line-height: 1.4;">Логика работы "Списка скачивания"</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.5 0.01 250); flex-shrink: 0;">#66699031</div>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: oklch(0.28 0.07 60); color: oklch(0.82 0.06 60);">Критический</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 12px 20px; display: flex; align-items: center; gap: 10px; border-top: 1px solid oklch(0.26 0.012 250); background: oklch(0.19 0.011 250);">
+        <div style="width: 34px; height: 26px; border-radius: 5px; background: repeating-linear-gradient(135deg, oklch(0.3 0.012 250) 0px, oklch(0.3 0.012 250) 4px, oklch(0.26 0.012 250) 4px, oklch(0.26 0.012 250) 8px); flex-shrink: 0;"></div>
+        <div style="flex: 1; font-size: 12.5px; color: oklch(0.65 0.01 250);">screenshot_04.png будет прикреплён к #66730627</div>
+      </div>
+      <div style="padding: 0 20px 16px;">
+        <div style="text-align: center; padding: 11px; border-radius: 9px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); font-size: 14px; font-weight: 700; cursor: pointer;">Прикрепить скриншот</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 5: SETTINGS -->
+  <div data-screen-label="07 — Настройки" style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.55 0.01 250);">07 · Настройки</div>
+    <div style="width: 480px; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px oklch(0.28 0.012 250); background: oklch(0.17 0.01 250); display: flex; flex-direction: column;">
+      <div style="padding: 16px 20px; border-bottom: 1px solid oklch(0.26 0.012 250);">
+        <div style="font-size: 15px; font-weight: 700; color: oklch(0.92 0.005 250);">Настройки</div>
+      </div>
+
+      <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 20px;">
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 12px; color: oklch(0.6 0.01 250); font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;">Подключение к Kaiten</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: oklch(0.65 0.008 250);">API-ключ</div>
+            <div style="display: flex; gap: 8px;">
+              <div style="flex: 1; padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.7 0.008 250); letter-spacing: 0.05em;">••••••••••••8f2a</div>
+              <div style="padding: 9px 14px; border-radius: 8px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); font-size: 13px; color: oklch(0.8 0.008 250); cursor: pointer; white-space: nowrap;">Показать</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: oklch(0.65 0.14 165);">● Соединение активно</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+            <div style="font-size: 12.5px; color: oklch(0.65 0.008 250);">Домен рабочего пространства</div>
+            <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.85 0.005 250); font-family: 'JetBrains Mono', monospace;">company.kaiten.ru</div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid oklch(0.24 0.012 250);">
+          <div style="font-size: 12px; color: oklch(0.6 0.01 250); font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding-top: 10px;">Оформление</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 13.5px; color: oklch(0.9 0.005 250);">Тема</div>
+            <div style="display: flex; gap: 4px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); border-radius: 8px; padding: 3px;">
+              <div style="padding: 6px 14px; border-radius: 6px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); font-size: 12.5px; font-weight: 700; cursor: pointer;">Тёмная</div>
+              <div style="padding: 6px 14px; border-radius: 6px; color: oklch(0.65 0.01 250); font-size: 12.5px; font-weight: 600; cursor: pointer;">Светлая</div>
+              <div style="padding: 6px 14px; border-radius: 6px; color: oklch(0.65 0.01 250); font-size: 12.5px; font-weight: 600; cursor: pointer;">Системная</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px; border-top: 1px solid oklch(0.24 0.012 250);">
+          <div style="font-size: 12px; color: oklch(0.6 0.01 250); font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding-top: 10px;">Значения по умолчанию</div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Пространство</div>
+              <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Команда <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Доска</div>
+              <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Sprint <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Ответственный</div>
+              <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Я <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Статус</div>
+              <div style="padding: 9px 12px; border-radius: 8px; background: oklch(0.2 0.012 250); border: 1px solid oklch(0.3 0.012 250); font-size: 13.5px; color: oklch(0.88 0.005 250); display: flex; justify-content: space-between; align-items: center;">Очередь <span style="color: oklch(0.5 0.01 250);">▾</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid oklch(0.24 0.012 250);">
+          <div style="font-size: 12px; color: oklch(0.6 0.01 250); font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding-top: 10px;">Захват</div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+              <div style="font-size: 13.5px; color: oklch(0.9 0.005 250);">Горячая клавиша захвата</div>
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Запуск выделения области</div>
+            </div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.85 0.005 250); background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); padding: 6px 10px; border-radius: 7px;">Ctrl Shift K</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+              <div style="font-size: 13.5px; color: oklch(0.9 0.005 250);">Горячая клавиша записи видео</div>
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Запуск/остановка записи экрана</div>
+            </div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.85 0.005 250); background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); padding: 6px 10px; border-radius: 7px;">Ctrl Shift R</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+              <div style="font-size: 13.5px; color: oklch(0.9 0.005 250);">Запускать вместе с ПК</div>
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Приложение стартует при входе в систему</div>
+            </div>
+            <div style="width: 18px; height: 18px; border-radius: 4px; background: oklch(0.6 0.15 165); display: flex; align-items: center; justify-content: center; color: oklch(0.12 0.03 165); font-size: 12px; font-weight: 800;">✓</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+              <div style="font-size: 13.5px; color: oklch(0.9 0.005 250);">Копировать в буфер после захвата</div>
+              <div style="font-size: 12px; color: oklch(0.55 0.01 250);">Помимо прикрепления к задаче</div>
+            </div>
+            <div style="width: 40px; height: 22px; border-radius: 999px; background: oklch(0.6 0.15 165); position: relative;">
+              <div style="width: 18px; height: 18px; border-radius: 50%; background: oklch(0.95 0.005 250); position: absolute; right: 2px; top: 2px;"></div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+              <div style="font-size: 13.5px; color: oklch(0.9 0.005 250);">Звук при захвате</div>
+            </div>
+            <div style="width: 40px; height: 22px; border-radius: 999px; background: oklch(0.28 0.012 250); position: relative;">
+              <div style="width: 18px; height: 18px; border-radius: 50%; background: oklch(0.6 0.01 250); position: absolute; left: 2px; top: 2px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 14px 20px; border-top: 1px solid oklch(0.26 0.012 250); display: flex; gap: 10px;">
+        <div style="flex: 1; text-align: center; padding: 11px; border-radius: 9px; background: oklch(0.22 0.013 250); border: 1px solid oklch(0.32 0.014 250); color: oklch(0.75 0.008 250); font-size: 14px; font-weight: 600; cursor: pointer;">Отмена</div>
+        <div style="flex: 2; text-align: center; padding: 11px; border-radius: 9px; background: oklch(0.6 0.15 165); color: oklch(0.12 0.03 165); font-size: 14px; font-weight: 700; cursor: pointer;">Сохранить</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+</body>
+</html>
