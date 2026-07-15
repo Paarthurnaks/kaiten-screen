@@ -2,7 +2,7 @@ import { app, BrowserWindow, clipboard, Menu, nativeImage } from "electron";
 import { join } from "node:path";
 import { registerCaptureHotkey, unregisterAllHotkeys } from "./hotkeys";
 import { createTray } from "./tray";
-import { showPostCaptureChoiceWindow, showSettingsWindow } from "./windows";
+import { showAnnotationWindow, showPostCaptureChoiceWindow, showSettingsWindow } from "./windows";
 import { registerIpcHandlers } from "./ipc-handlers";
 import { exportConfigToFile, importConfigFromFile } from "./config-file-transfer";
 import { saveRecordingToFile } from "./recording-file-transfer";
@@ -152,11 +152,11 @@ export async function triggerCaptureFlow(): Promise<void> {
     return;
   }
   pendingCapture = { kind: "image", region: result.region, image: result.image };
-  logger.info("Main.triggerCaptureFlow", "capture ready, opening post-capture choice", {
+  logger.info("Main.triggerCaptureFlow", "capture ready, opening annotation screen", {
     width: result.region.width,
     height: result.region.height,
   });
-  showPostCaptureChoiceWindow(logger);
+  showAnnotationWindow(logger);
 }
 
 /** Старт записи видео выделенной области — общая точка входа для хоткея-тоггла и
