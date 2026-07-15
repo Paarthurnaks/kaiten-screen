@@ -20,8 +20,16 @@ export type AnnotationShape =
   | { id: string; type: "rect"; from: Point; to: Point; color: string };
 
 /** Фиксированная палитра — не через CSS-переменные --ks-*, те подобраны под
- * хром приложения, а не под контент поверх произвольного скриншота. */
-export const ANNOTATION_COLORS = ["#ef4444", "#facc15", "#22c55e", "#3b82f6", "#ffffff"] as const;
+ * хром приложения, а не под контент поверх произвольного скриншота. Точные
+ * значения и порядок взяты из дизайн-макета (design/Screenshotter for Kaiten.dc.html,
+ * экран "02 — Аннотирование") для визуального соответствия. */
+export const ANNOTATION_COLORS = [
+  "oklch(0.62 0.19 25)",
+  "oklch(0.6 0.15 165)",
+  "oklch(0.65 0.16 95)",
+  "oklch(0.6 0.14 250)",
+  "oklch(0.94 0.005 250)",
+] as const;
 
 /** Толщина линии фиксирована в этом релизе, без UI выбора (см. план — вне рамок). */
 export const ANNOTATION_LINE_WIDTH = 3;
