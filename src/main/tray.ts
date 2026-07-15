@@ -4,6 +4,8 @@ import { createAppIcon } from "./app-icon";
 
 export interface TrayActions {
   onCapture: () => void;
+  /** Toggle: старт записи, если не идёт, иначе — стоп текущей (см. main/index.ts toggleRecording). */
+  onToggleRecording: () => void;
   onOpenSettings: () => void;
   onCheckForUpdates: () => void;
 }
@@ -23,6 +25,13 @@ export function createTray(actions: TrayActions, logger: Logger): Tray {
       click: () => {
         logger.debug("Tray.menu", "capture clicked");
         actions.onCapture();
+      },
+    },
+    {
+      label: "Записать видео",
+      click: () => {
+        logger.debug("Tray.menu", "toggle recording clicked");
+        actions.onToggleRecording();
       },
     },
     {

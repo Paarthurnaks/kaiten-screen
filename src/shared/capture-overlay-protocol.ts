@@ -17,6 +17,8 @@ export interface CaptureOverlayRegionPayload {
   height: number;
   /** "choice" — обычный сценарий (кнопка "Готово"), показывает окно выбора действия.
    * "clipboard" — Ctrl+C или иконка "Копировать" в тулбаре: скриншот сразу уходит в
-   * буфер обмена, без промежуточных окон. */
-  action: "choice" | "clipboard";
+   * буфер обмена, без промежуточных окон. "record" — оверлей открыт в режиме записи
+   * видео (?mode=record), кнопка "Начать запись": область выделена, сразу стартует
+   * запись (см. ScreenRecordingProvider). */
+  action: "choice" | "clipboard" | "record";
 }

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Kaiten Screen — Recording Frame</title>
+    <style>
+      /*
+        Полностью статическая страница (кроме крошечного inline-скрипта ниже) —
+        окно click-through (setIgnoreMouseEvents) и исключено из собственного
+        захвата (setContentProtection), см. WindowsScreenRecording. Окно растянуто
+        на весь дисплей; позицию/размер "дыры" (region в системе координат этого
+        дисплея) main передаёт через query-параметры при загрузке страницы.
+      */
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+      /* box-shadow с огромным spread — стандартный приём "дыры": сам элемент
+         прозрачен, а тень заливает всё ОСТАЛЬНОЕ пространство окна затемнением. */
+      #hole {
+        position: absolute;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hole"></div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const hole = document.getElementById("hole");
+      hole.style.left = `${params.get("holeX")}px`;
+      hole.style.top = `${params.get("holeY")}px`;
+      hole.style.width = `${params.get("holeW")}px`;
+      hole.style.height = `${params.get("holeH")}px`;
+    </script>
+  </body>
+</html>

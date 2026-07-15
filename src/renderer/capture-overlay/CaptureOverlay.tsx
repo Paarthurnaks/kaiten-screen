@@ -26,7 +26,14 @@ function isTooSmall(rect: Rect): boolean {
   return rect.width < MIN_SELECTION_SIZE || rect.height < MIN_SELECTION_SIZE;
 }
 
+/** Режим оверлея — читается один раз из query-параметра окна ("record" открывает
+ * WindowsScreenRecording, всё остальное — обычный скриншот-флоу по умолчанию). */
+function readMode(): "screenshot" | "record" {
+  return new URLSearchParams(window.location.search).get("mode") === "record" ? "record" : "screenshot";
+}
+
 export function CaptureOverlay() {
+  const [mode] = useState(readMode);
   const [phase, setPhase] = useState<Phase>("idle");
   const [rect, setRect] = useState<Rect | null>(null);
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -41,14 +48,22 @@ export function CaptureOverlay() {
         return;
       }
       // Ctrl+C поверх готового выделения — сразу в буфер обмена, минуя окно выбора
-      // действия (аналог кнопки "Копировать" в тулбаре, см. handleCopy).
-      if (event.key.toLowerCase() === "c" && event.ctrlKey && phase === "selected" && rect && !isTooSmall(rect)) {
+      // действия (аналог кнопки "Копировать" в тулбаре, см. handleCopy). Неприменимо
+      // в режиме записи — видео нельзя положить в буфер обмена обычным способом.
+      if (
+        mode === "screenshot" &&
+        event.key.toLowerCase() === "c" &&
+        event.ctrlKey &&
+        phase === "selected" &&
+        rect &&
+        !isTooSmall(rect)
+      ) {
         window.captureOverlay.reportRegionSelected({ ...rect, action: "clipboard" });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [phase, rect]);
+  }, [mode, phase, rect]);
 
   const handleContainerMouseDown = useCallback(
     (event: React.MouseEvent) => {
@@ -179,6 +194,17 @@ export function CaptureOverlay() {
     window.captureOverlay.reportCancelled();
   }, []);
 
+  // Режим записи: подтверждение области сразу стартует запись (см. ScreenRecordingProvider) —
+  // аналог handleDone, но с action:"record" вместо "choice".
+  const handleStartRecording = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!rect || isTooSmall(rect)) return;
+      window.captureOverlay.reportRegionSelected({ ...rect, action: "record" });
+    },
+    [rect],
+  );
+
   const showDimensionLabel = rect && (phase === "dragging" || phase === "selected") && !isTooSmall(rect);
 
   let toolbarTop = 0;
@@ -281,31 +307,57 @@ export function CaptureOverlay() {
           <ToolbarButton title="Заново" onClick={handleRedo}>
             ↺
           </ToolbarButton>
-          <ToolbarButton title="Скопировать в буфер обмена (Ctrl+C)" onClick={handleCopy}>
-            📋
-          </ToolbarButton>
+          {mode === "screenshot" && (
+            <ToolbarButton title="Скопировать в буфер обмена (Ctrl+C)" onClick={handleCopy}>
+              📋
+            </ToolbarButton>
+          )}
           <ToolbarDivider />
-          <button
-            type="button"
-            onClick={handleDone}
-            style={{
-              height: 36,
-              padding: "0 16px",
-              borderRadius: 8,
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "var(--ks-accent)",
-              color: "var(--ks-accent-contrast)",
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-              fontFamily: "var(--font-sans)",
-            }}
-          >
-            ✓ Готово
-          </button>
+          {mode === "record" ? (
+            <button
+              type="button"
+              onClick={handleStartRecording}
+              style={{
+                height: 36,
+                padding: "0 16px",
+                borderRadius: 8,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--ks-accent)",
+                color: "var(--ks-accent-contrast)",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                fontFamily: "var(--font-sans)",
+              }}
+            >
+              ● Начать запись
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleDone}
+              style={{
+                height: 36,
+                padding: "0 16px",
+                borderRadius: 8,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--ks-accent)",
+                color: "var(--ks-accent-contrast)",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                fontFamily: "var(--font-sans)",
+              }}
+            >
+              ✓ Готово
+            </button>
+          )}
         </div>
       )}
 
@@ -320,7 +372,7 @@ export function CaptureOverlay() {
             color: "var(--ks-text-secondary)",
           }}
         >
-          Выделите область экрана ·{" "}
+          {mode === "record" ? "Выделите область для записи" : "Выделите область экрана"} ·{" "}
           <span className="ks-chip-mono" style={{ padding: "1px 6px" }}>
             Esc
           </span>{" "}

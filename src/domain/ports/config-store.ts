@@ -6,6 +6,12 @@ export interface AppConfig {
   defaultLaneId: string | null;
   defaultResponsibleId: string | null;
   captureHotkey: string;
+  /** Хоткей записи видео — работает как toggle (старт/стоп одной кнопкой),
+   * независим от captureHotkey. */
+  recordHotkey: string;
+  /** Жёсткий лимит длительности записи видео в секундах (MVP-ограничение,
+   * значение фиксируется только здесь, не хардкодится в коде записи). */
+  recordingMaxDurationSec: number;
   autostart: boolean;
 }
 
@@ -17,12 +23,15 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   defaultLaneId: null,
   defaultResponsibleId: null,
   captureHotkey: "CommandOrControl+Shift+K",
+  recordHotkey: "CommandOrControl+Shift+R",
+  recordingMaxDurationSec: 300,
   autostart: false,
 };
 
 /**
  * Хранилище несекретных настроек приложения (домен Kaiten, дефолтная доска/дорожка,
- * хоткей, автозапуск). API-ключ сюда не входит — см. domain/ports/secret-store.ts.
+ * хоткей скриншота, хоткей записи видео, лимит длительности записи, автозапуск).
+ * API-ключ сюда не входит — см. domain/ports/secret-store.ts.
  */
 export interface ConfigStore {
   getConfig(): Promise<AppConfig>;

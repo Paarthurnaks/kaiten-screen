@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { CaptureAndCreateTask } from "../capture-and-create-task";
 import { CaptureRegion } from "../../domain/value-objects/capture-region";
 import type { CapturedImage } from "../../domain/entities/captured-image";
+import type { CapturedVideo } from "../../domain/entities/captured-video";
 import type { ScreenCaptureProvider } from "../../domain/ports/screen-capture-provider";
 import type { KaitenClient } from "../../domain/ports/kaiten-client";
 import type { Logger } from "../../domain/ports/logger";
@@ -30,6 +31,7 @@ function createStubKaitenClient(overrides: Partial<KaitenClient> = {}): KaitenCl
 }
 
 const sampleImage: CapturedImage = { buffer: Buffer.from("fake-png"), mimeType: "image/png" };
+const sampleVideo: CapturedVideo = { buffer: Buffer.from("fake-webm"), mimeType: "video/webm" };
 
 describe("CaptureAndCreateTask", () => {
   it("captureStep возвращает null, если пользователь отменил захват", async () => {
@@ -150,6 +152,32 @@ describe("CaptureAndCreateTask", () => {
 
     expect(result.membersFailed).toBe(true);
     expect(result.attachmentFailed).toBe(false);
+  });
+
+  it("submitStep принимает видео-вложение так же, как изображение", async () => {
+    const capture = {} as ScreenCaptureProvider;
+    const attachFile = vi.fn().mockResolvedValue(undefined);
+    const kaiten = createStubKaitenClient({
+      createTask: vi.fn().mockResolvedValue({ id: "task-1", url: "https://kaiten.example/task-1" }),
+      attachFile,
+    });
+    const useCase = new CaptureAndCreateTask(capture, kaiten, createNoopLogger());
+
+    const result = await useCase.submitStep({ title: "Bug", boardId: "b1", laneId: "l1" }, sampleVideo);
+
+    expect(attachFile).toHaveBeenCalledWith("task-1", sampleVideo);
+    expect(result.attachmentFailed).toBe(false);
+  });
+
+  it("attachToExistingCard прикрепляет видео-вложение к переданному cardId", async () => {
+    const capture = {} as ScreenCaptureProvider;
+    const attachFile = vi.fn().mockResolvedValue(undefined);
+    const kaiten = createStubKaitenClient({ attachFile });
+    const useCase = new CaptureAndCreateTask(capture, kaiten, createNoopLogger());
+
+    await useCase.attachToExistingCard("66730627", sampleVideo);
+
+    expect(attachFile).toHaveBeenCalledWith("66730627", sampleVideo);
   });
 
   it("attachToExistingCard прикрепляет скриншот к переданному cardId", async () => {

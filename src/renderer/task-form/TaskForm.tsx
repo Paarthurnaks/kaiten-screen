@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { fixWebmDuration } from "../shared/fix-webm-duration";
+import { usePendingVideoUrl } from "../shared/use-pending-video-url";
 import type {
   KaitenCustomPropertyDto,
   KaitenOptionDto,
@@ -44,6 +46,7 @@ function initials(fullName: string): string {
 export function TaskForm() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<PendingCaptureDto | null>(null);
+  const videoUrl = usePendingVideoUrl(pending);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [spacesLoadError, setSpacesLoadError] = useState<string | null>(null);
 
@@ -274,13 +277,24 @@ export function TaskForm() {
               border: "1px solid var(--ks-border)",
             }}
           >
-            <img
-              src={pending.imageDataUrl}
-              alt="Скриншот"
-              style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
-            />
+            {pending.kind === "video" ? (
+              videoUrl && (
+                <video
+                  src={videoUrl}
+                  muted
+                  onLoadedMetadata={(event) => fixWebmDuration(event.currentTarget)}
+                  style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+                />
+              )
+            ) : (
+              <img
+                src={pending.imageDataUrl}
+                alt="Скриншот"
+                style={{ width: 56, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+              />
+            )}
             <div style={{ flex: 1, fontSize: 13, color: "var(--ks-text-secondary)" }}>
-              screenshot.png{" "}
+              {pending.kind === "video" ? "recording.webm" : "screenshot.png"}{" "}
               <span style={{ color: "var(--ks-text-faint)" }}>
                 · {pending.region.width}×{pending.region.height}
               </span>

@@ -7,6 +7,11 @@ import type {
 } from "../shared/ipc-contract";
 import { CAPTURE_OVERLAY_CHANNELS } from "../shared/capture-overlay-protocol";
 import type { CaptureOverlayRegionPayload } from "../shared/capture-overlay-protocol";
+import { RECORDING_INDICATOR_CHANNELS } from "../shared/recording-indicator-protocol";
+import type {
+  RecordingFinishedPayload,
+  RecordingIndicatorInitPayload,
+} from "../shared/recording-indicator-protocol";
 
 const kaitenScreenApi: KaitenScreenApi = {
   getPendingCapture: () => ipcRenderer.invoke(IPC_CHANNELS.getPendingCapture),
@@ -25,6 +30,7 @@ const kaitenScreenApi: KaitenScreenApi = {
   cancelPendingCapture: () => ipcRenderer.invoke(IPC_CHANNELS.cancelPendingCapture),
   attachToExistingCard: (cardId: string) => ipcRenderer.invoke(IPC_CHANNELS.attachToExistingCard, cardId),
   copyToClipboard: () => ipcRenderer.invoke(IPC_CHANNELS.copyToClipboard),
+  saveRecordingToFile: () => ipcRenderer.invoke(IPC_CHANNELS.saveRecordingToFile),
   backToChoice: () => ipcRenderer.invoke(IPC_CHANNELS.backToChoice),
   exportProjectConfig: () => ipcRenderer.invoke(IPC_CHANNELS.exportProjectConfig),
   importProjectConfig: () => ipcRenderer.invoke(IPC_CHANNELS.importProjectConfig),
@@ -40,5 +46,32 @@ const captureOverlayApi = {
   },
 };
 
+/** Отдельный узкий API только для окна recording-indicator (см.
+ * shared/recording-indicator-protocol.ts) — само окно и показывает UI записи, и
+ * выполняет захват (getUserMedia/canvas/MediaRecorder). */
+const recordingControlApi = {
+  onInit: (callback: (payload: RecordingIndicatorInitPayload) => void): void => {
+    ipcRenderer.on(RECORDING_INDICATOR_CHANNELS.init, (_event, payload: RecordingIndicatorInitPayload) =>
+      callback(payload),
+    );
+  },
+  onStopRequested: (callback: () => void): void => {
+    ipcRenderer.on(RECORDING_INDICATOR_CHANNELS.stopRequested, () => callback());
+  },
+  reportStarted: (): void => {
+    ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.started);
+  },
+  reportStopClicked: (): void => {
+    ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.stopClicked);
+  },
+  reportFinished: (payload: RecordingFinishedPayload): void => {
+    ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.finished, payload);
+  },
+  reportFailed: (message: string): void => {
+    ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.failed, message);
+  },
+};
+
 contextBridge.exposeInMainWorld("kaitenScreen", kaitenScreenApi);
 contextBridge.exposeInMainWorld("captureOverlay", captureOverlayApi);
+contextBridge.exposeInMainWorld("recordingControl", recordingControlApi);

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PendingCaptureDto } from "../../shared/ipc-contract";
+import { fixWebmDuration } from "../shared/fix-webm-duration";
+import { usePendingVideoUrl } from "../shared/use-pending-video-url";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -10,6 +12,7 @@ export function PostCaptureChoice() {
   const [pending, setPending] = useState<PendingCaptureDto | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const videoUrl = usePendingVideoUrl(pending);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +47,17 @@ export function PostCaptureChoice() {
     await window.kaitenScreen.copyToClipboard();
   }
 
+  async function handleSaveToFile(): Promise<void> {
+    setBusy(true);
+    const result = await window.kaitenScreen.saveRecordingToFile();
+    if (!result.path) {
+      // Пользователь отменил диалог "Сохранить как…" — в отличие от
+      // copyToClipboard, окно в этом случае не закрывается (см. ipc-handlers.ts),
+      // так что возвращаем интерактивность, а не оставляем UI навсегда "занятым".
+      setBusy(false);
+    }
+  }
+
   async function handleCancel(): Promise<void> {
     setBusy(true);
     await window.kaitenScreen.cancelPendingCapture();
@@ -64,12 +78,23 @@ export function PostCaptureChoice() {
               background: "var(--ks-bg-subtle)",
             }}
           >
-            <img src={pending.imageDataUrl} alt="Скриншот" style={{ display: "block", width: "100%" }} />
+            {pending.kind === "video" ? (
+              videoUrl && (
+                <video
+                  src={videoUrl}
+                  controls
+                  onLoadedMetadata={(event) => fixWebmDuration(event.currentTarget)}
+                  style={{ display: "block", width: "100%" }}
+                />
+              )
+            ) : (
+              <img src={pending.imageDataUrl} alt="Скриншот" style={{ display: "block", width: "100%" }} />
+            )}
           </div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="ks-card-title">Скриншот готов</div>
+          <div className="ks-card-title">{pending?.kind === "video" ? "Запись готова" : "Скриншот готов"}</div>
           {pending && (
             <div className="ks-chip-mono">
               {pending.region.width}×{pending.region.height}
@@ -93,13 +118,23 @@ export function PostCaptureChoice() {
             disabled={busy || loading}
             onClick={() => void handleAttachExisting()}
           />
-          <ActionButton
-            icon="📋"
-            title="Скопировать в буфер обмена"
-            subtitle="Без создания карточки в Kaiten"
-            disabled={busy || loading}
-            onClick={() => void handleCopyToClipboard()}
-          />
+          {pending?.kind === "video" ? (
+            <ActionButton
+              icon="💾"
+              title="Сохранить в файл"
+              subtitle="Сохранить .webm на диск, без создания карточки"
+              disabled={busy || loading}
+              onClick={() => void handleSaveToFile()}
+            />
+          ) : (
+            <ActionButton
+              icon="📋"
+              title="Скопировать в буфер обмена"
+              subtitle="Без создания карточки в Kaiten"
+              disabled={busy || loading}
+              onClick={() => void handleCopyToClipboard()}
+            />
+          )}
           <button
             type="button"
             className="ks-btn ks-btn-ghost"

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { KaitenOptionDto, PendingCaptureDto } from "../../shared/ipc-contract";
+import { fixWebmDuration } from "../shared/fix-webm-duration";
+import { usePendingVideoUrl } from "../shared/use-pending-video-url";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -9,6 +11,7 @@ function errorMessage(err: unknown): string {
 
 export function AttachTask() {
   const [pending, setPending] = useState<PendingCaptureDto | null>(null);
+  const videoUrl = usePendingVideoUrl(pending);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
@@ -191,16 +194,27 @@ export function AttachTask() {
           }}
         >
           {pending ? (
-            <img
-              src={pending.imageDataUrl}
-              alt="Скриншот"
-              style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
-            />
+            pending.kind === "video" ? (
+              videoUrl && (
+                <video
+                  src={videoUrl}
+                  muted
+                  onLoadedMetadata={(event) => fixWebmDuration(event.currentTarget)}
+                  style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
+                />
+              )
+            ) : (
+              <img
+                src={pending.imageDataUrl}
+                alt="Скриншот"
+                style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
+              />
+            )
           ) : (
             <div style={{ width: 34, height: 26, borderRadius: 5, background: "var(--ks-bg-chip)", flexShrink: 0 }} />
           )}
           <div style={{ flex: 1, fontSize: 12.5, color: "var(--ks-text-muted)" }}>
-            screenshot.png будет прикреплён к #{selectedTask.id}
+            {pending?.kind === "video" ? "recording.webm" : "screenshot.png"} будет прикреплён к #{selectedTask.id}
           </div>
         </div>
       )}

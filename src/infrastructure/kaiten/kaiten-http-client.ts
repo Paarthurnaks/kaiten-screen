@@ -10,7 +10,7 @@ import type {
   KaitenCreatedTask,
 } from "../../domain/ports/kaiten-client";
 import type { TaskDraft } from "../../domain/entities/task-draft";
-import type { CapturedImage } from "../../domain/entities/captured-image";
+import type { Attachment } from "../../domain/entities/attachment";
 import type { ConfigStore } from "../../domain/ports/config-store";
 import type { SecretStore } from "../../domain/ports/secret-store";
 import type { Logger } from "../../domain/ports/logger";
@@ -73,6 +73,10 @@ async function readErrorBody(response: Response): Promise<string> {
   } catch {
     return "<no response body>";
   }
+}
+
+function attachmentFileName(attachment: Attachment): string {
+  return attachment.mimeType === "video/webm" ? "recording.webm" : "screenshot.png";
 }
 
 /** KaitenHttpClient (implements KaitenClient) — HTTP-адаптер поверх Kaiten REST API. */
@@ -152,7 +156,7 @@ export class KaitenHttpClient implements KaitenClient {
     };
   }
 
-  async attachFile(taskId: string, image: CapturedImage): Promise<void> {
+  async attachFile(taskId: string, attachment: Attachment): Promise<void> {
     const config = await this.configStore.getConfig();
     const apiKey = await this.secretStore.getApiKey();
     if (!apiKey) {
@@ -160,10 +164,18 @@ export class KaitenHttpClient implements KaitenClient {
     }
 
     const url = `${normalizeBaseUrl(config.kaitenDomain)}${ENDPOINTS.attachFile(taskId)}`;
-    this.logger.debug("KaitenHttpClient.attachFile", `PUT ${ENDPOINTS.attachFile(taskId)}`, { taskId });
+    this.logger.debug("KaitenHttpClient.attachFile", `PUT ${ENDPOINTS.attachFile(taskId)}`, {
+      taskId,
+      mimeType: attachment.mimeType,
+    });
 
     const formData = new FormData();
-    formData.append("file", new Blob([Uint8Array.from(image.buffer)], { type: image.mimeType }), "screenshot.png");
+    const fileName = attachmentFileName(attachment);
+    formData.append(
+      "file",
+      new Blob([Uint8Array.from(attachment.buffer)], { type: attachment.mimeType }),
+      fileName,
+    );
 
     const response = await fetch(url, {
       method: "PUT",

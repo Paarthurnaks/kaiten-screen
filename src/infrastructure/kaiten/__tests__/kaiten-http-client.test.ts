@@ -18,6 +18,8 @@ function createConfigStore(overrides: Partial<AppConfig> = {}): ConfigStore {
     defaultLaneId: null,
     defaultResponsibleId: null,
     captureHotkey: "CommandOrControl+Shift+K",
+    recordHotkey: "CommandOrControl+Shift+R",
+    recordingMaxDurationSec: 300,
     autostart: false,
     ...overrides,
   };
@@ -149,6 +151,26 @@ describe("KaitenHttpClient", () => {
     // к боевому Kaiten) — раньше здесь ошибочно стоял POST.
     expect(init.method).toBe("PUT");
     expect(init.body).toBeInstanceOf(FormData);
+    const uploadedFile = (init.body as FormData).get("file") as File;
+    expect(uploadedFile.name).toBe("screenshot.png");
+    expect(uploadedFile.type).toBe("image/png");
+  });
+
+  it("attachFile отправляет multipart-запрос с видео-вложением (recording.webm, video/webm)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, {}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new KaitenHttpClient(createConfigStore(), createSecretStore("secret-key"), createNoopLogger());
+
+    await client.attachFile("42", { buffer: Buffer.from("fake-webm"), mimeType: "video/webm" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://mycompany.kaiten.ru/api/latest/cards/42/files");
+    expect(init.method).toBe("PUT");
+    const uploadedFile = (init.body as FormData).get("file") as File;
+    expect(uploadedFile.name).toBe("recording.webm");
+    expect(uploadedFile.type).toBe("video/webm");
   });
 
   it("addCardMember шлёт POST с числовым user_id", async () => {
