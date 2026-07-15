@@ -197,7 +197,19 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCan
     return (
       <canvas
         ref={canvasRef}
-        style={{ width: "100%", display: "block", cursor: activeTool ? "crosshair" : "default" }}
+        // Единственный потребитель этого компонента — просторный отдельный экран
+        // аннотирования (Annotation.tsx), где скриншот уместнее показывать в
+        // естественном разрешении по центру, уменьшая только если он крупнее
+        // доступного места, а не растягивать через силу на всю ширину контейнера
+        // (как было нужно в тесной карточке 420px в прошлой версии).
+        style={{
+          maxWidth: "100%",
+          maxHeight: "100%",
+          width: "auto",
+          height: "auto",
+          display: "block",
+          cursor: activeTool ? "crosshair" : "default",
+        }}
         onMouseDown={handleMouseDown}
       />
     );
