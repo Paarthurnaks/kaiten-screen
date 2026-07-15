@@ -47,6 +47,9 @@ export interface IpcHandlerDeps {
   /** Открывает диалог "Сохранить как…" и пишет туда байты видео (см.
    * main/recording-file-transfer.ts). Возвращает путь к файлу или null при отмене. */
   saveRecordingToFile: (window: BrowserWindow | undefined, video: CapturedVideo) => Promise<string | null>;
+  /** Перезаписывает изображение ожидающего скриншота отредактированной версией
+   * (аннотации) — см. main/index.ts updatePendingImage. */
+  updatePendingImage: (buffer: Buffer) => void;
   logger: Logger;
 }
 
@@ -205,6 +208,20 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     clipboard.writeImage(nativeImage.createFromBuffer(pending.image.buffer));
     deps.clearPendingCapture();
     BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.updatePendingImage, (_event, imageDataUrl: string): void => {
+    logger.debug("IpcHandlers.updatePendingImage", "requested");
+    const pending = deps.getPendingCapture();
+    if (!pending) {
+      throw new Error("No pending capture to update — capture a region first");
+    }
+    if (pending.kind !== "image") {
+      logger.warn("IpcHandlers.updatePendingImage", "attempted to annotate a video attachment");
+      throw new Error("Annotating a video recording is not supported");
+    }
+    const buffer = nativeImage.createFromDataURL(imageDataUrl).toPNG();
+    deps.updatePendingImage(buffer);
   });
 
   ipcMain.handle(IPC_CHANNELS.saveRecordingToFile, async (event): Promise<SaveRecordingResultDto> => {

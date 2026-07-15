@@ -22,6 +22,7 @@ export const IPC_CHANNELS = {
   cancelPendingCapture: "app:cancel-pending-capture",
   attachToExistingCard: "app:attach-to-existing-card",
   copyToClipboard: "app:copy-to-clipboard",
+  updatePendingImage: "app:update-pending-image",
   saveRecordingToFile: "app:save-recording-to-file",
   backToChoice: "app:back-to-choice",
   exportProjectConfig: "app:export-project-config",
@@ -141,6 +142,12 @@ export interface KaitenScreenApi {
   /** Копирует ожидающий скриншот в системный буфер обмена и закрывает окно — позволяет
    * пользоваться приложением как обычным скриншотером, без создания карточки в Kaiten. */
   copyToClipboard(): Promise<void>;
+  /** Перезаписывает изображение ожидающего скриншота отредактированной версией
+   * (с нарисованными аннотациями) — вызывается перед chooseCreateTask/
+   * chooseAttachExisting/copyToClipboard, если пользователь что-то нарисовал
+   * поверх превью в PostCaptureChoice. imageDataUrl — результат
+   * canvas.toDataURL("image/png"). */
+  updatePendingImage(imageDataUrl: string): Promise<void>;
   /** Открывает диалог "Сохранить как…" и пишет туда байты ожидающей видеозаписи —
    * видео-аналог copyToClipboard (ОС не поддерживает copy/paste видео стандартным
    * способом). Закрывает окно только при реальном сохранении — если пользователь
