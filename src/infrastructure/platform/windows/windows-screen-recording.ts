@@ -26,6 +26,8 @@ const STOP_TIMEOUT_MS = 15_000;
  */
 export class WindowsScreenRecording implements ScreenRecordingProvider {
   private indicatorWindow: BrowserWindow | null = null;
+  // Click-through окно-рамка вокруг записываемой области — см. startIndicatorAndRecording.
+  private frameWindow: BrowserWindow | null = null;
   private userRequestedStopCallback: (() => void) | null = null;
   private onStopClicked: (() => void) | null = null;
 
@@ -146,6 +148,7 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
       x: Math.round(region.x + region.width / 2),
       y: Math.round(region.y + region.height / 2),
     });
+    const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 
     const indicator = new BrowserWindow({
       x: Math.round(display.bounds.x + display.bounds.width - INDICATOR_WIDTH - INDICATOR_MARGIN),
@@ -170,6 +173,47 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
     indicator.setContentProtection(true);
     this.indicatorWindow = indicator;
 
+    // Подсветка записываемой области — единственная цель: показать пользователю,
+    // что именно попадает в кадр (иначе после закрытия оверлея выделение никак не
+    // видно). Окно растянуто на весь дисплей и затемняет всё, КРОМЕ прямоугольника
+    // региона (CSS box-shadow с огромным spread — стандартный приём "дыры"/
+    // spotlight, см. recording-frame/index.html) — сама область остаётся чистой,
+    // без рамки поверх контента.
+    const frame = new BrowserWindow({
+      x: Math.round(display.bounds.x),
+      y: Math.round(display.bounds.y),
+      width: Math.round(display.bounds.width),
+      height: Math.round(display.bounds.height),
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      movable: false,
+      focusable: false,
+    });
+    // Не должно перехватывать клики/наводку мыши — под ней продолжает работать то
+    // приложение, которое записывается.
+    frame.setIgnoreMouseEvents(true);
+    // Исключает подсветку из собственного захвата — как и индикатор (см.
+    // комментарий выше), best-effort на Windows 10 2004+/11.
+    frame.setContentProtection(true);
+    this.frameWindow = frame;
+    // Координаты "дыры" — в системе координат самого окна (т.е. относительно
+    // дисплея), а не глобальные экранные, поэтому region проецируется через
+    // display.bounds, как и во всех остальных местах DPI-математики этого файла.
+    const holeParams = new URLSearchParams({
+      holeX: String(Math.round(region.x - display.bounds.x)),
+      holeY: String(Math.round(region.y - display.bounds.y)),
+      holeW: String(Math.round(region.width)),
+      holeH: String(Math.round(region.height)),
+    }).toString();
+    if (rendererUrl) {
+      void frame.loadURL(`${rendererUrl}/recording-frame/index.html?${holeParams}`);
+    } else {
+      void frame.loadFile(join(__dirname, "../renderer/recording-frame/index.html"), { search: holeParams });
+    }
+
     // Клик по кнопке "Стоп" в индикаторе (или авто-стоп по лимиту) не может
     // остановить запись сам — только уведомляет main через этот колбэк, чтобы main
     // провёл тот же путь завершения (stopRecording -> showPostCaptureChoiceWindow),
@@ -184,7 +228,6 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
     // RecordingIndicator.tsx) — дальше грузим его страницу и одновременно ждём
     // источники захвата (запущены заранее в selectRegion(), см. комментарий там) и
     // конфиг, вместо того чтобы делать это последовательно.
-    const rendererUrl = process.env.ELECTRON_RENDERER_URL;
     const loadPromise = rendererUrl
       ? indicator.loadURL(`${rendererUrl}/recording-indicator/index.html`)
       : indicator.loadFile(join(__dirname, "../renderer/recording-indicator/index.html"));
@@ -269,5 +312,9 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
       this.indicatorWindow.close();
     }
     this.indicatorWindow = null;
+    if (this.frameWindow && !this.frameWindow.isDestroyed()) {
+      this.frameWindow.close();
+    }
+    this.frameWindow = null;
   }
 }

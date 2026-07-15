@@ -40,6 +40,7 @@ export default defineConfig({
           postCaptureChoice: resolve(__dirname, "src/renderer/post-capture-choice/index.html"),
           attachTask: resolve(__dirname, "src/renderer/attach-task/index.html"),
           recordingIndicator: resolve(__dirname, "src/renderer/recording-indicator/index.html"),
+          recordingFrame: resolve(__dirname, "src/renderer/recording-frame/index.html"),
         },
       },
     },
