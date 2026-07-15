@@ -18,6 +18,9 @@ vi.mock("electron", () => ({
   },
   nativeImage: {
     createFromBuffer: () => ({ toDataURL: () => "data:image/png;base64,fake" }),
+    createFromDataURL: (dataUrl: string) => ({
+      toPNG: () => Buffer.from(dataUrl.replace("data:image/png;base64,", ""), "base64"),
+    }),
   },
 }));
 
@@ -58,6 +61,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
       saveRecordingToFile: vi.fn(),
+      updatePendingImage: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -87,6 +91,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
       saveRecordingToFile: vi.fn(),
+      updatePendingImage: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -126,6 +131,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
       saveRecordingToFile: vi.fn(),
+      updatePendingImage: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -139,5 +145,75 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       membersFailed: false,
     });
     expect(pending).toBeNull();
+  });
+});
+
+describe("registerIpcHandlers — updatePendingImage", () => {
+  beforeEach(() => {
+    handlers.clear();
+    vi.clearAllMocks();
+  });
+
+  function register(getPendingCapture: () => PendingCapture | null, updatePendingImage = vi.fn()) {
+    const registerPromise = import("../ipc-handlers").then(({ registerIpcHandlers }) =>
+      registerIpcHandlers({
+        captureAndCreateTask: {} as unknown as CaptureAndCreateTask,
+        loadSettings: {} as unknown as LoadSettings,
+        saveSettings: {} as unknown as SaveSettings,
+        listKaitenOptions: {} as unknown as ListKaitenOptions,
+        getPendingCapture,
+        clearPendingCapture: vi.fn(),
+        reregisterHotkeys: vi.fn(),
+        applyAutostart: vi.fn(),
+        exportProjectConfig: vi.fn(),
+        importProjectConfig: vi.fn(),
+        saveRecordingToFile: vi.fn(),
+        updatePendingImage,
+        logger: createNoopLogger(),
+      }),
+    );
+    return { registerPromise, updatePendingImage };
+  }
+
+  it("вызывает deps.updatePendingImage с декодированным Buffer, когда pendingCapture — изображение", async () => {
+    const { IPC_CHANNELS } = await import("../../shared/ipc-contract");
+    const region = CaptureRegion.create(0, 0, 10, 10);
+    const pending: PendingCapture = { kind: "image", region, image: sampleImage };
+    const { registerPromise, updatePendingImage } = register(() => pending);
+    await registerPromise;
+
+    const handler = handlers.get(IPC_CHANNELS.updatePendingImage);
+    expect(handler).toBeDefined();
+
+    await handler!({}, "data:image/png;base64,ZmFrZS1wbmc=");
+
+    expect(updatePendingImage).toHaveBeenCalledTimes(1);
+    expect(updatePendingImage).toHaveBeenCalledWith(Buffer.from("fake-png"));
+  });
+
+  it("бросает понятную ошибку и не вызывает deps.updatePendingImage, если нет pendingCapture", async () => {
+    const { IPC_CHANNELS } = await import("../../shared/ipc-contract");
+    const { registerPromise, updatePendingImage } = register(() => null);
+    await registerPromise;
+
+    const handler = handlers.get(IPC_CHANNELS.updatePendingImage);
+    expect(() => handler!({}, "data:image/png;base64,ZmFrZQ==")).toThrow(/No pending capture/);
+    expect(updatePendingImage).not.toHaveBeenCalled();
+  });
+
+  it("бросает понятную ошибку и не вызывает deps.updatePendingImage, если pendingCapture — видео", async () => {
+    const { IPC_CHANNELS } = await import("../../shared/ipc-contract");
+    const region = CaptureRegion.create(0, 0, 10, 10);
+    const pending: PendingCapture = {
+      kind: "video",
+      region,
+      video: { buffer: Buffer.from("fake-webm"), mimeType: "video/webm" },
+    };
+    const { registerPromise, updatePendingImage } = register(() => pending);
+    await registerPromise;
+
+    const handler = handlers.get(IPC_CHANNELS.updatePendingImage);
+    expect(() => handler!({}, "data:image/png;base64,ZmFrZQ==")).toThrow(/not supported/);
+    expect(updatePendingImage).not.toHaveBeenCalled();
   });
 });

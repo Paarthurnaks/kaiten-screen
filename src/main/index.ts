@@ -116,6 +116,23 @@ function clearPendingCapture(): void {
   pendingCapture = null;
 }
 
+/** Перезаписывает изображение ожидающего скриншота отредактированной версией
+ * (с нарисованными аннотациями) — вызывается из IPC-хендлера update-pending-image
+ * (см. ipc-handlers.ts), которому renderer шлёт canvas.toDataURL() перед тем, как
+ * создать задачу/прикрепить/скопировать в буфер обмена. */
+function updatePendingImage(buffer: Buffer): void {
+  if (!pendingCapture || pendingCapture.kind !== "image") {
+    logger.warn("Main.updatePendingImage", "no pending image to update — ignoring", {
+      pendingKind: pendingCapture?.kind ?? null,
+    });
+    return;
+  }
+  pendingCapture = { ...pendingCapture, image: { ...pendingCapture.image, buffer } };
+  logger.debug("Main.updatePendingImage", "pending image updated with annotations", {
+    byteLength: buffer.byteLength,
+  });
+}
+
 /** Захват региона -> показ формы задачи. Общая точка входа для хоткея и клика в трее
  * (и для e2e-тестов, которым нужно программно запустить сценарий — см. tests/e2e/). */
 export async function triggerCaptureFlow(): Promise<void> {
@@ -273,6 +290,7 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
     listKaitenOptions,
     getPendingCapture,
     clearPendingCapture,
+    updatePendingImage,
     reregisterHotkeys,
     applyAutostart,
     exportProjectConfig,
