@@ -104,16 +104,27 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, AnnotationCan
       img.src = imageDataUrl;
     }, [imageDataUrl]);
 
+    // Размер канваса выставляется ОТДЕЛЬНО от перерисовки и только при смене
+    // картинки — переприсвоение canvas.width/height пересоздаёт backing store и
+    // это не нужно делать на каждое изменение draft (то есть на каждый mousemove
+    // во время рисования), это чисто лишняя работа при перерисовке одних и тех же
+    // фигур поверх той же картинки.
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !image) return;
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+    }, [image]);
+
     // Полная перерисовка на каждое изменение картинки/фигур/черновой фигуры —
     // при типичном количестве фигур на одном скриншоте (единицы-десятки) это не
     // является проблемой производительности, инкрементальный рендеринг не нужен.
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas || !image) return;
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image, 0, 0);
       for (const shape of shapes) {
         drawShape(ctx, shape);
