@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Logger } from "../domain/ports/logger";
 import { createAppIcon } from "./app-icon";
 
-type RendererPage = "settings" | "task-form" | "post-capture-choice" | "attach-task";
+type RendererPage = "settings" | "task-form" | "post-capture-choice" | "attach-task" | "annotation";
 
 function loadRendererPage(window: BrowserWindow, page: RendererPage): void {
   const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -18,6 +18,7 @@ let settingsWindow: BrowserWindow | null = null;
 let taskFormWindow: BrowserWindow | null = null;
 let postCaptureChoiceWindow: BrowserWindow | null = null;
 let attachTaskWindow: BrowserWindow | null = null;
+let annotationWindow: BrowserWindow | null = null;
 
 /** Показывает окно настроек, переиспользуя существующее, если оно уже открыто. */
 export function showSettingsWindow(logger: Logger): BrowserWindow {
@@ -73,6 +74,32 @@ export function closeTaskFormWindow(): void {
   if (taskFormWindow && !taskFormWindow.isDestroyed()) {
     taskFormWindow.close();
   }
+}
+
+/** Показывает окно аннотирования скриншота (между захватом и выбором действия),
+ * переиспользуя существующее. Перезагружает содержимое при переиспользовании —
+ * см. комментарий в showTaskFormWindow. */
+export function showAnnotationWindow(logger: Logger): BrowserWindow {
+  if (annotationWindow && !annotationWindow.isDestroyed()) {
+    loadRendererPage(annotationWindow, "annotation");
+    annotationWindow.focus();
+    return annotationWindow;
+  }
+
+  annotationWindow = new BrowserWindow({
+    width: 960,
+    height: 720,
+    title: "Kaiten Screen — Аннотирование",
+    icon: createAppIcon(),
+    webPreferences: { preload: join(__dirname, "../preload/index.cjs") },
+  });
+  loadRendererPage(annotationWindow, "annotation");
+  annotationWindow.on("closed", () => {
+    logger.debug("Windows.showAnnotationWindow", "annotation window closed");
+    annotationWindow = null;
+  });
+  logger.debug("Windows.showAnnotationWindow", "annotation window created");
+  return annotationWindow;
 }
 
 /** Показывает окно выбора действия после захвата, переиспользуя существующее.
