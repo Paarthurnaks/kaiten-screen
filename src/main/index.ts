@@ -202,6 +202,16 @@ function reregisterHotkeys(config: Pick<AppConfig, "captureHotkey" | "recordHotk
 }
 
 function applyAutostart(enabled: boolean): void {
+  // В dev-режиме (npm run dev) setLoginItemSettings() регистрирует в автозагрузке
+  // текущий процесс как есть — electron.exe из node_modules с путём к проекту
+  // аргументом. При старте системы эта команда бьётся об отсутствующий dev-сервер
+  // ("запусти npm run dev в такой-то папке"). В packaged-сборке (app.isPackaged)
+  // process.execPath корректно указывает на установленный .exe, поэтому там это
+  // безопасно.
+  if (!app.isPackaged) {
+    logger.debug("Main.applyAutostart", "skipped — app is not packaged (dev mode)", { enabled });
+    return;
+  }
   app.setLoginItemSettings({ openAtLogin: enabled });
   logger.info("Main.applyAutostart", "autostart setting applied", { enabled });
 }

@@ -1,6 +1,6 @@
 {
   "name": "kaiten-screen",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "description": "Windows-приложение: скриншот выделенной области экрана -> форма задачи -> автоматическое создание карточки в Kaiten через API",
   "author": "",
