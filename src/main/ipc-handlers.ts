@@ -68,8 +68,11 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
       height: pending.region.height,
     };
     if (pending.kind === "video") {
-      const videoDataUrl = `data:video/webm;base64,${pending.video.buffer.toString("base64")}`;
-      return { kind: "video", region, videoDataUrl };
+      // new Uint8Array(buffer) копирует ровно byteLength байт независимо от
+      // смещения/паддинга исходного Node Buffer — .buffer.buffer напрямую мог бы
+      // отдать более крупный подлежащий ArrayBuffer с мусором за пределами среза.
+      const videoBuffer = new Uint8Array(pending.video.buffer).buffer;
+      return { kind: "video", region, videoBuffer, videoMimeType: "video/webm" };
     }
     const imageDataUrl = nativeImage.createFromBuffer(pending.image.buffer).toDataURL();
     return { kind: "image", region, imageDataUrl };

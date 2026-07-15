@@ -37,8 +37,12 @@ export type PendingCaptureDto =
   | {
       kind: "video";
       region: { x: number; y: number; width: number; height: number };
-      /** data:video/webm;base64,... — готово для использования в <video src>. */
-      videoDataUrl: string;
+      /** Сырые байты видео — renderer сам собирает Blob + URL.createObjectURL()
+       * (см. renderer/shared/use-pending-video-url.ts). data:video/webm;base64 URL
+       * для крупных видео капризно ведёт себя в <video> (пустой кадр/битая
+       * перемотка) — обычный Blob надёжнее и не тратит +33% на base64. */
+      videoBuffer: ArrayBuffer;
+      videoMimeType: "video/webm";
     };
 
 export interface SubmitTaskInputDto {

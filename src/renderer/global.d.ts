@@ -16,6 +16,7 @@ declare global {
       onInit: (callback: (payload: RecordingIndicatorInitPayload) => void) => void;
       onStopRequested: (callback: () => void) => void;
       reportStarted: () => void;
+      reportStopClicked: () => void;
       reportFinished: (payload: RecordingFinishedPayload) => void;
       reportFailed: (message: string) => void;
     };

@@ -81,6 +81,10 @@ function createScreenRecordingProvider(): ScreenRecordingProvider {
 
 const captureProvider = createScreenCaptureProvider();
 const screenRecordingProvider = createScreenRecordingProvider();
+// Клик по кнопке "Стоп" в индикаторе или авто-стоп по лимиту длительности не
+// останавливают запись сами — просят main провести toggleRecording(), тот же путь
+// завершения, что и хоткей/трей (см. ScreenRecordingProvider.onUserRequestedStop).
+screenRecordingProvider.onUserRequestedStop(() => toggleRecording());
 
 export const captureAndCreateTask = new CaptureAndCreateTask(captureProvider, kaitenClient, logger);
 export const loadSettings = new LoadSettings(configStore, secretStore, logger);

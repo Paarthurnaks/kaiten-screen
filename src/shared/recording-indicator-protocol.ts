@@ -10,9 +10,14 @@ export const RECORDING_INDICATOR_CHANNELS = {
   init: "internal:recording-indicator:init",
   /** indicator -> main: запись реально стартовала (getUserMedia+MediaRecorder готовы). */
   started: "internal:recording-indicator:started",
-  /** main -> indicator: сигнал остановить запись — приходит либо от хоткея-тоггла,
-   * либо от пункта трея. Клик по кнопке "Стоп" в самом индикаторе обрабатывается
-   * локально тем же кодом остановки, без похода через этот канал. */
+  /** indicator -> main: пользователь нажал "Стоп" в самом индикаторе. Индикатор НЕ
+   * останавливает запись сам по этому клику — он лишь просит main провести тот же
+   * путь остановки, что и хоткей-тоггл/трей (см. ScreenRecordingProvider.onUserRequestedStop),
+   * иначе main не узнает, что запись завершена, и не откроет окно выбора действия. */
+  stopClicked: "internal:recording-indicator:stop-clicked",
+  /** main -> indicator: сигнал реально остановить запись — единственное место,
+   * которое запускает recorder.stop(), приходит ли оно в ответ на хоткей-тоггл,
+   * трей или клик по кнопке "Стоп" самого индикатора (см. stopClicked выше). */
   stopRequested: "internal:recording-indicator:stop-requested",
   /** indicator -> main: запись остановлена, вложены финальные байты видео. */
   finished: "internal:recording-indicator:finished",

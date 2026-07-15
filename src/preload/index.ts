@@ -60,6 +60,9 @@ const recordingControlApi = {
   reportStarted: (): void => {
     ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.started);
   },
+  reportStopClicked: (): void => {
+    ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.stopClicked);
+  },
   reportFinished: (payload: RecordingFinishedPayload): void => {
     ipcRenderer.send(RECORDING_INDICATOR_CHANNELS.finished, payload);
   },

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PendingCaptureDto } from "../../shared/ipc-contract";
+import { fixWebmDuration } from "../shared/fix-webm-duration";
+import { usePendingVideoUrl } from "../shared/use-pending-video-url";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -10,6 +12,7 @@ export function PostCaptureChoice() {
   const [pending, setPending] = useState<PendingCaptureDto | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const videoUrl = usePendingVideoUrl(pending);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +68,14 @@ export function PostCaptureChoice() {
             }}
           >
             {pending.kind === "video" ? (
-              <video src={pending.videoDataUrl} controls style={{ display: "block", width: "100%" }} />
+              videoUrl && (
+                <video
+                  src={videoUrl}
+                  controls
+                  onLoadedMetadata={(event) => fixWebmDuration(event.currentTarget)}
+                  style={{ display: "block", width: "100%" }}
+                />
+              )
             ) : (
               <img src={pending.imageDataUrl} alt="Скриншот" style={{ display: "block", width: "100%" }} />
             )}

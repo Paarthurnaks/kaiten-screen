@@ -26,11 +26,17 @@ const STOP_TIMEOUT_MS = 15_000;
  */
 export class WindowsScreenRecording implements ScreenRecordingProvider {
   private indicatorWindow: BrowserWindow | null = null;
+  private userRequestedStopCallback: (() => void) | null = null;
+  private onStopClicked: (() => void) | null = null;
 
   constructor(
     private readonly configStore: ConfigStore,
     private readonly logger: Logger,
   ) {}
+
+  onUserRequestedStop(callback: () => void): void {
+    this.userRequestedStopCallback = callback;
+  }
 
   async selectRegion(): Promise<{ region: CaptureRegion } | null> {
     this.logger.debug("WindowsScreenRecording.selectRegion", "opening record overlay");
@@ -156,6 +162,16 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
     indicator.setContentProtection(true);
     this.indicatorWindow = indicator;
 
+    // Клик по кнопке "Стоп" в индикаторе (или авто-стоп по лимиту) не может
+    // остановить запись сам — только уведомляет main через этот колбэк, чтобы main
+    // провёл тот же путь завершения (stopRecording -> showPostCaptureChoiceWindow),
+    // что и для хоткея/трея. Слушатель живёт ровно столько же, сколько окно.
+    this.onStopClicked = (): void => {
+      this.logger.debug("WindowsScreenRecording", "user requested stop via indicator button/auto-stop");
+      this.userRequestedStopCallback?.();
+    };
+    ipcMain.on(RECORDING_INDICATOR_CHANNELS.stopClicked, this.onStopClicked);
+
     const config = await this.configStore.getConfig();
     const initPayload: RecordingIndicatorInitPayload = {
       sourceId: source.id,
@@ -221,6 +237,10 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
   }
 
   private closeIndicatorWindow(): void {
+    if (this.onStopClicked) {
+      ipcMain.removeListener(RECORDING_INDICATOR_CHANNELS.stopClicked, this.onStopClicked);
+      this.onStopClicked = null;
+    }
     if (this.indicatorWindow && !this.indicatorWindow.isDestroyed()) {
       this.indicatorWindow.close();
     }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { KaitenOptionDto, PendingCaptureDto } from "../../shared/ipc-contract";
+import { fixWebmDuration } from "../shared/fix-webm-duration";
+import { usePendingVideoUrl } from "../shared/use-pending-video-url";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -9,6 +11,7 @@ function errorMessage(err: unknown): string {
 
 export function AttachTask() {
   const [pending, setPending] = useState<PendingCaptureDto | null>(null);
+  const videoUrl = usePendingVideoUrl(pending);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
@@ -192,11 +195,14 @@ export function AttachTask() {
         >
           {pending ? (
             pending.kind === "video" ? (
-              <video
-                src={pending.videoDataUrl}
-                muted
-                style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
-              />
+              videoUrl && (
+                <video
+                  src={videoUrl}
+                  muted
+                  onLoadedMetadata={(event) => fixWebmDuration(event.currentTarget)}
+                  style={{ width: 34, height: 26, objectFit: "cover", borderRadius: 5, flexShrink: 0 }}
+                />
+              )
             ) : (
               <img
                 src={pending.imageDataUrl}

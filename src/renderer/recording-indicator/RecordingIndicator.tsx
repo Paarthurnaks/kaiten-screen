@@ -45,6 +45,24 @@ export function RecordingIndicator() {
   const timerIdRef = useRef<number | null>(null);
   const maxDurationRef = useRef<number>(300);
   const stoppingRef = useRef(false);
+  const stopRequestSentRef = useRef(false);
+  // StrictMode в dev дважды прогоняет этот эффект (mount -> cleanup -> mount), а
+  // cleanup ниже не снимает ipcRenderer-листенер onInit (contextBridge API его не
+  // предоставляет) — без этого флага main.send(init) один раз ловят ОБА
+  // зарегистрированных листенера, стартуют два независимых getUserMedia/
+  // MediaRecorder, и оба пишут чанки в один chunksRef.current — результат: два
+  // перемешанных webm-потока в одном файле (обнаружено разбором .webm вручную —
+  // второй EBML-заголовок посреди файла, отсюда PIPELINE_ERROR_DECODE в<video>).
+  const captureStartedRef = useRef(false);
+
+  // Общая точка "попросить main остановить запись" — используется и кнопкой "Стоп",
+  // и авто-стопом по лимиту. Отправляет запрос не более одного раза, даже если
+  // таймер продолжает тикать, пока main не пришлёт stopRequested в ответ.
+  const requestStop = useCallback(() => {
+    if (stopRequestSentRef.current) return;
+    stopRequestSentRef.current = true;
+    window.recordingControl.reportStopClicked();
+  }, []);
 
   const stopAndFinish = useCallback(() => {
     if (stoppingRef.current) return;
@@ -72,6 +90,15 @@ export function RecordingIndicator() {
 
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+
+  // Клик по кнопке "Стоп" НЕ останавливает запись напрямую — сообщает main, что
+  // пользователь хочет остановиться, и main присылает stopRequested в ответ (тот же
+  // путь, что и для хоткея-тоггла/трея, см. recording-indicator-protocol.ts). Иначе
+  // main не узнаёт о завершении записи и не открывает окно выбора действия.
+  const handleStopClick = useCallback(() => {
+    console.debug(LOG_PREFIX, "stop button clicked, requesting main to stop");
+    requestStop();
+  }, [requestStop]);
 
   useEffect(() => {
     const startCapture = async (payload: RecordingIndicatorInitPayload): Promise<void> => {
@@ -109,9 +136,21 @@ export function RecordingIndicator() {
         videoEl.muted = true;
         videoEl.srcObject = stream;
         await videoEl.play();
+        // play() резолвится, когда стартовал playback-таймер, а не когда реально
+        // декодирован первый кадр — если начать рисовать в canvas раньше, первые
+        // кадры записи (и, что заметнее всего, самый первый кадр — тот, что
+        // <video> показывает превью в PostCaptureChoice до нажатия play) окажутся
+        // чёрными. HAVE_CURRENT_DATA (readyState >= 2) — минимальная гарантия, что
+        // хотя бы один реальный кадр уже доступен для отрисовки.
+        if (videoEl.readyState < 2) {
+          await new Promise<void>((resolve) => {
+            videoEl.addEventListener("loadeddata", () => resolve(), { once: true });
+          });
+        }
         console.debug(LOG_PREFIX, "source video element playing", {
           videoWidth: videoEl.videoWidth,
           videoHeight: videoEl.videoHeight,
+          readyState: videoEl.readyState,
         });
 
         // Обрезка по выделенному прямоугольнику: та же математика DIP -> физические
@@ -119,8 +158,14 @@ export function RecordingIndicator() {
         // левого-верхнего угла дисплея, умноженный на scaleFactor).
         const sx = Math.round((payload.region.x - payload.displayBounds.x) * payload.displayScaleFactor);
         const sy = Math.round((payload.region.y - payload.displayBounds.y) * payload.displayScaleFactor);
-        const sw = Math.round(payload.region.width * payload.displayScaleFactor);
-        const sh = Math.round(payload.region.height * payload.displayScaleFactor);
+        // VP8/VP9 (4:2:0 subsampling) требуют чётных ширины/высоты источника — при
+        // нечётном размере канвы Chromium пишет в контейнер исходный (нечётный)
+        // PixelWidth/PixelHeight, но кодирует по округлённому размеру, и итоговый
+        // .webm потом не декодируется вообще (PIPELINE_ERROR_DECODE) — воспроизведено
+        // и подтверждено вручную. Пользователь почти всегда выделяет регион с
+        // нечётной стороной, так что округляем канву до ближайшего чётного вниз.
+        const sw = Math.round(payload.region.width * payload.displayScaleFactor) & ~1;
+        const sh = Math.round(payload.region.height * payload.displayScaleFactor) & ~1;
 
         const canvas = document.createElement("canvas");
         canvas.width = sw;
@@ -163,11 +208,11 @@ export function RecordingIndicator() {
               console.debug(LOG_PREFIX, "recording elapsed", { seconds });
             }
             if (seconds >= maxDurationRef.current) {
-              console.debug(LOG_PREFIX, "max duration reached, auto-stopping", {
+              console.debug(LOG_PREFIX, "max duration reached, requesting main to stop", {
                 seconds,
                 maxDurationSec: maxDurationRef.current,
               });
-              stopAndFinish();
+              requestStop();
             }
           }, 1000);
         };
@@ -198,7 +243,17 @@ export function RecordingIndicator() {
       }
     };
 
-    window.recordingControl.onInit((payload) => void startCapture(payload));
+    window.recordingControl.onInit((payload) => {
+      // Синхронная проверка-и-установка до какого-либо await внутри startCapture —
+      // второй листенер (см. комментарий у captureStartedRef) должен быть отброшен
+      // ДО того, как он успеет запустить свой собственный getUserMedia/MediaRecorder.
+      if (captureStartedRef.current) {
+        console.debug(LOG_PREFIX, "ignoring duplicate init (StrictMode double-invoke)");
+        return;
+      }
+      captureStartedRef.current = true;
+      void startCapture(payload);
+    });
     window.recordingControl.onStopRequested(() => stopAndFinish());
 
     return () => {
@@ -206,7 +261,7 @@ export function RecordingIndicator() {
       if (timerIdRef.current !== null) window.clearInterval(timerIdRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
-  }, [stopAndFinish]);
+  }, [stopAndFinish, requestStop]);
 
   return (
     <div
@@ -246,7 +301,7 @@ export function RecordingIndicator() {
       </span>
       <button
         type="button"
-        onClick={stopAndFinish}
+        onClick={handleStopClick}
         disabled={status !== "recording"}
         title="Остановить запись"
         style={{
