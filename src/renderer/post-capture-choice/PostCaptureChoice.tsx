@@ -47,6 +47,17 @@ export function PostCaptureChoice() {
     await window.kaitenScreen.copyToClipboard();
   }
 
+  async function handleSaveToFile(): Promise<void> {
+    setBusy(true);
+    const result = await window.kaitenScreen.saveRecordingToFile();
+    if (!result.path) {
+      // Пользователь отменил диалог "Сохранить как…" — в отличие от
+      // copyToClipboard, окно в этом случае не закрывается (см. ipc-handlers.ts),
+      // так что возвращаем интерактивность, а не оставляем UI навсегда "занятым".
+      setBusy(false);
+    }
+  }
+
   async function handleCancel(): Promise<void> {
     setBusy(true);
     await window.kaitenScreen.cancelPendingCapture();
@@ -107,7 +118,15 @@ export function PostCaptureChoice() {
             disabled={busy || loading}
             onClick={() => void handleAttachExisting()}
           />
-          {pending?.kind !== "video" && (
+          {pending?.kind === "video" ? (
+            <ActionButton
+              icon="💾"
+              title="Сохранить в файл"
+              subtitle="Сохранить .webm на диск, без создания карточки"
+              disabled={busy || loading}
+              onClick={() => void handleSaveToFile()}
+            />
+          ) : (
             <ActionButton
               icon="📋"
               title="Скопировать в буфер обмена"

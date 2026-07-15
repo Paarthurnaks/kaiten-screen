@@ -8,6 +8,7 @@ import type {
   KaitenUserDto,
   LoadedSettingsDto,
   PendingCaptureDto,
+  SaveRecordingResultDto,
   SaveSettingsInputDto,
   SubmitTaskInputDto,
   SubmitTaskResultDto,
@@ -17,6 +18,7 @@ import type { LoadSettings } from "../application/load-settings";
 import type { SaveSettings } from "../application/save-settings";
 import type { ListKaitenOptions } from "../application/list-kaiten-options";
 import type { Attachment } from "../domain/entities/attachment";
+import type { CapturedVideo } from "../domain/entities/captured-video";
 import type { AppConfig } from "../domain/ports/config-store";
 import type { Logger } from "../domain/ports/logger";
 import { showAttachTaskWindow, showPostCaptureChoiceWindow, showTaskFormWindow } from "./windows";
@@ -42,6 +44,9 @@ export interface IpcHandlerDeps {
   /** Открывает диалог "Открыть файл…" и применяет выбранный конфиг (хоткей/автозапуск
    * переприменяются, если изменились). Возвращает false при отмене диалога. */
   importProjectConfig: (window: BrowserWindow | undefined) => Promise<boolean>;
+  /** Открывает диалог "Сохранить как…" и пишет туда байты видео (см.
+   * main/recording-file-transfer.ts). Возвращает путь к файлу или null при отмене. */
+  saveRecordingToFile: (window: BrowserWindow | undefined, video: CapturedVideo) => Promise<string | null>;
   logger: Logger;
 }
 
@@ -200,6 +205,24 @@ export function registerIpcHandlers(deps: IpcHandlerDeps): void {
     clipboard.writeImage(nativeImage.createFromBuffer(pending.image.buffer));
     deps.clearPendingCapture();
     BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.saveRecordingToFile, async (event): Promise<SaveRecordingResultDto> => {
+    logger.debug("IpcHandlers.saveRecordingToFile", "requested");
+    const pending = deps.getPendingCapture();
+    if (!pending || pending.kind !== "video") {
+      throw new Error("No pending video recording to save — record a region first");
+    }
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+    const path = await deps.saveRecordingToFile(window, pending.video);
+    if (path) {
+      // Диалог закрывает пользователь сам подтверждением сохранения — в отличие от
+      // отмены (path === null), после которой окно выбора действия должно остаться
+      // открытым, чтобы пользователь мог попробовать другое действие.
+      deps.clearPendingCapture();
+      BrowserWindow.fromWebContents(event.sender)?.close();
+    }
+    return { path };
   });
 
   ipcMain.handle(IPC_CHANNELS.chooseCreateTask, (event): void => {

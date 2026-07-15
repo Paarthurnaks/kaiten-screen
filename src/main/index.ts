@@ -5,6 +5,7 @@ import { createTray } from "./tray";
 import { showPostCaptureChoiceWindow, showSettingsWindow } from "./windows";
 import { registerIpcHandlers } from "./ipc-handlers";
 import { exportConfigToFile, importConfigFromFile } from "./config-file-transfer";
+import { saveRecordingToFile } from "./recording-file-transfer";
 import { seedConfigFromProjectFileIfEmpty } from "./project-config-seed";
 import { checkForUpdatesManually, setupAutoUpdater } from "./auto-updater";
 import { notifyIfVersionChanged } from "./version-notice";
@@ -219,6 +220,10 @@ async function importProjectConfig(window: BrowserWindow | undefined): Promise<b
   return applied;
 }
 
+function saveRecording(window: BrowserWindow | undefined, video: CapturedVideo): Promise<string | null> {
+  return saveRecordingToFile(window, video, logger);
+}
+
 // Экспортируется, чтобы e2e-тесты (tests/e2e/) могли дождаться завершения
 // регистрации IPC-хендлеров перед взаимодействием с окнами.
 export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
@@ -262,6 +267,7 @@ export const appReadyPromise: Promise<void> = app.whenReady().then(async () => {
     applyAutostart,
     exportProjectConfig,
     importProjectConfig,
+    saveRecordingToFile: saveRecording,
     logger,
   });
 });

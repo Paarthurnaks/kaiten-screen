@@ -57,6 +57,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       applyAutostart: vi.fn(),
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
+      saveRecordingToFile: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -85,6 +86,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       applyAutostart: vi.fn(),
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
+      saveRecordingToFile: vi.fn(),
       logger: createNoopLogger(),
     });
 
@@ -123,6 +125,7 @@ describe("registerIpcHandlers — submitTask устойчивость к сет�
       applyAutostart: vi.fn(),
       exportProjectConfig: vi.fn(),
       importProjectConfig: vi.fn(),
+      saveRecordingToFile: vi.fn(),
       logger: createNoopLogger(),
     });
 

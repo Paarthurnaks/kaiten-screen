@@ -39,6 +39,23 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
   }
 
   async selectRegion(): Promise<{ region: CaptureRegion } | null> {
+    // desktopCapturer.getSources() реально может занимать секунды (Windows
+    // энумерирует источники захвата вне зависимости от thumbnailSize) — раньше это
+    // ожидание целиком ложилось ПОСЛЕ выбора региона пользователем, и несколько
+    // секунд после клика "Начать запись" пользователь не видел вообще никакой
+    // реакции (оверлей уже закрыт, окно-индикатор ещё не появилось). Запускаем
+    // энумерацию ПАРАЛЛЕЛЬНО с самим выделением региона — пока пользователь тащит
+    // прямоугольник (обычно несколько секунд), источники успевают подготовиться к
+    // моменту, когда они реально понадобятся.
+    const sourcesPromise = desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 0, height: 0 },
+    });
+    // Если пользователь отменит выделение (Esc) раньше, чем этот промис
+    // разрешится, ниже он так и останется неawaited — без этого catch отклонение
+    // (маловероятное, но возможное) улетело бы как unhandled rejection.
+    sourcesPromise.catch(() => {});
+
     this.logger.debug("WindowsScreenRecording.selectRegion", "opening record overlay");
     const selection = await showOverlayAndWaitForSelection("record", this.logger);
     if (!selection) {
@@ -53,7 +70,7 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
 
     const { region } = selection;
     try {
-      await this.startIndicatorAndRecording(region);
+      await this.startIndicatorAndRecording(region, sourcesPromise);
       this.logger.info("WindowsScreenRecording.selectRegion", "recording started", {
         width: region.width,
         height: region.height,
@@ -121,22 +138,13 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
     return result;
   }
 
-  private async startIndicatorAndRecording(region: CaptureRegion): Promise<void> {
+  private async startIndicatorAndRecording(
+    region: CaptureRegion,
+    sourcesPromise: ReturnType<typeof desktopCapturer.getSources>,
+  ): Promise<void> {
     const display = screen.getDisplayNearestPoint({
       x: Math.round(region.x + region.width / 2),
       y: Math.round(region.y + region.height / 2),
-    });
-
-    // thumbnailSize намеренно минимальный — здесь нужен только id источника для
-    // getUserMedia в renderer, не превью (в отличие от grabRegion() для скриншотов).
-    const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1, height: 1 } });
-    const source = sources.find((candidate) => candidate.display_id === String(display.id)) ?? sources[0];
-    if (!source) {
-      throw new Error("No screen source available for recording");
-    }
-    this.logger.debug("WindowsScreenRecording.startIndicatorAndRecording", "resolved source", {
-      sourceId: source.id,
-      displayId: display.id,
     });
 
     const indicator = new BrowserWindow({
@@ -172,7 +180,34 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
     };
     ipcMain.on(RECORDING_INDICATOR_CHANNELS.stopClicked, this.onStopClicked);
 
-    const config = await this.configStore.getConfig();
+    // Окно уже видно пользователю (показывает "Подготовка…", см.
+    // RecordingIndicator.tsx) — дальше грузим его страницу и одновременно ждём
+    // источники захвата (запущены заранее в selectRegion(), см. комментарий там) и
+    // конфиг, вместо того чтобы делать это последовательно.
+    const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+    const loadPromise = rendererUrl
+      ? indicator.loadURL(`${rendererUrl}/recording-indicator/index.html`)
+      : indicator.loadFile(join(__dirname, "../renderer/recording-indicator/index.html"));
+    const didFinishLoadPromise = new Promise<void>((resolve) => {
+      indicator.webContents.once("did-finish-load", () => resolve());
+    });
+
+    const [sources, config] = await Promise.all([
+      sourcesPromise,
+      this.configStore.getConfig(),
+      loadPromise,
+      didFinishLoadPromise,
+    ]);
+
+    const source = sources.find((candidate) => candidate.display_id === String(display.id)) ?? sources[0];
+    if (!source) {
+      throw new Error("No screen source available for recording");
+    }
+    this.logger.debug("WindowsScreenRecording.startIndicatorAndRecording", "resolved source", {
+      sourceId: source.id,
+      displayId: display.id,
+    });
+
     const initPayload: RecordingIndicatorInitPayload = {
       sourceId: source.id,
       displayBounds: {
@@ -185,17 +220,6 @@ export class WindowsScreenRecording implements ScreenRecordingProvider {
       region: { x: region.x, y: region.y, width: region.width, height: region.height },
       maxDurationSec: config.recordingMaxDurationSec,
     };
-
-    const rendererUrl = process.env.ELECTRON_RENDERER_URL;
-    if (rendererUrl) {
-      void indicator.loadURL(`${rendererUrl}/recording-indicator/index.html`);
-    } else {
-      void indicator.loadFile(join(__dirname, "../renderer/recording-indicator/index.html"));
-    }
-
-    await new Promise<void>((resolve) => {
-      indicator.webContents.once("did-finish-load", () => resolve());
-    });
 
     this.logger.debug("WindowsScreenRecording.startIndicatorAndRecording", "sending init payload", {
       maxDurationSec: initPayload.maxDurationSec,

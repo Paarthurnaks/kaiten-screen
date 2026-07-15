@@ -22,6 +22,7 @@ export const IPC_CHANNELS = {
   cancelPendingCapture: "app:cancel-pending-capture",
   attachToExistingCard: "app:attach-to-existing-card",
   copyToClipboard: "app:copy-to-clipboard",
+  saveRecordingToFile: "app:save-recording-to-file",
   backToChoice: "app:back-to-choice",
   exportProjectConfig: "app:export-project-config",
   importProjectConfig: "app:import-project-config",
@@ -110,6 +111,11 @@ export interface ImportProjectConfigResultDto {
   applied: boolean;
 }
 
+export interface SaveRecordingResultDto {
+  /** null — пользователь отменил диалог сохранения. */
+  path: string | null;
+}
+
 export interface KaitenScreenApi {
   /** Возвращает ожидающий скриншот либо запись видео (см. PendingCaptureDto.kind),
    * либо null, если ничего не ожидает обработки. */
@@ -135,6 +141,11 @@ export interface KaitenScreenApi {
   /** Копирует ожидающий скриншот в системный буфер обмена и закрывает окно — позволяет
    * пользоваться приложением как обычным скриншотером, без создания карточки в Kaiten. */
   copyToClipboard(): Promise<void>;
+  /** Открывает диалог "Сохранить как…" и пишет туда байты ожидающей видеозаписи —
+   * видео-аналог copyToClipboard (ОС не поддерживает copy/paste видео стандартным
+   * способом). Закрывает окно только при реальном сохранении — если пользователь
+   * отменил диалог, path === null и окно остаётся открытым. */
+  saveRecordingToFile(): Promise<SaveRecordingResultDto>;
   /** Экран формы задачи/прикрепления -> закрывает себя и возвращает на экран выбора
    * действия, не сбрасывая ожидающий скриншот (в отличие от cancelPendingCapture). */
   backToChoice(): Promise<void>;
