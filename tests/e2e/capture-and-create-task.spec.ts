@@ -50,7 +50,13 @@ async function captureAndFillTaskForm(electronApp: ElectronApplication): Promise
       .reportRegionSelected({ x: 100, y: 100, width: 220, height: 160, action: "choice" });
   });
 
-  // После захвата теперь сначала открывается экран выбора действия (см. windows.ts:
+  // После захвата теперь сначала открывается экран аннотирования (см. windows.ts:
+  // showAnnotationWindow) — проходим его транзитом, не рисуя ничего, нажатием "Готово".
+  const annotationPage = await electronApp.waitForEvent("window");
+  await annotationPage.waitForLoadState("domcontentloaded");
+  await annotationPage.getByRole("button", { name: /Готово/ }).click();
+
+  // Затем открывается экран выбора действия (см. windows.ts:
   // showPostCaptureChoiceWindow) — выбираем "Создать новую задачу", чтобы попасть в форму.
   const choicePage = await electronApp.waitForEvent("window");
   await choicePage.waitForLoadState("domcontentloaded");
