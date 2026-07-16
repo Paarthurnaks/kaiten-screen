@@ -68,11 +68,39 @@ export function setupAutoUpdater(logger: Logger): void {
   void autoUpdater.checkForUpdates();
 }
 
-/** Ручная проверка обновлений — вызывается из пункта меню трея. */
+/**
+ * Ручная проверка обновлений — вызывается из пункта меню трея.
+ *
+ * autoUpdater — общий singleton с постоянными слушателями из setupAutoUpdater: они
+ * молча логируют "нет обновлений"/"ошибка" (рассчитаны на фоновую проверку, где не
+ * нужно дёргать пользователя лишний раз). Ручная проверка — по клику пользователя,
+ * поэтому для этих двух исходов здесь добавляются одноразовые слушатели с notify(),
+ * иначе пользователь видит просто закрывшееся меню и не понимает, что произошло.
+ * update-available/update-downloaded уже покрыты постоянными слушателями — там
+ * обратная связь есть.
+ */
 export function checkForUpdatesManually(logger: Logger): void {
   if (!app.isPackaged) {
     logger.debug("AutoUpdater.manualCheck", "skipped — app is not packaged (dev mode)");
     return;
   }
+
+  const cleanup = () => {
+    autoUpdater.off("update-not-available", onNotAvailable);
+    autoUpdater.off("error", onError);
+  };
+  const onNotAvailable = () => {
+    logger.debug("AutoUpdater.manualCheck", "no update available (manual check)");
+    notify("Kaiten Screen", "У вас установлена последняя версия.");
+    cleanup();
+  };
+  const onError = (err: Error) => {
+    logger.error("AutoUpdater.manualCheck", "update check failed (manual check)", { error: String(err) });
+    notify("Kaiten Screen", "Не удалось проверить обновления. Попробуйте позже.");
+    cleanup();
+  };
+
+  autoUpdater.once("update-not-available", onNotAvailable);
+  autoUpdater.once("error", onError);
   void autoUpdater.checkForUpdates();
 }

@@ -42,6 +42,19 @@ import type { AppConfig } from "../domain/ports/config-store";
 // там после каждого `npm run test:e2e`).
 app.setName(process.env.E2E_TEST_HOOKS === "1" ? "kaiten-screen-e2e" : "kaiten-screen");
 
+// Без single-instance lock повторный запуск (двойной клик по ярлыку, гонка автозапуска
+// с ручным стартом) поднимает второй независимый процесс со своим app.whenReady() →
+// своя иконка в трее — пользователь видит несколько копий приложения. requestSingleInstanceLock()
+// учитывает app.setName() при определении области блокировки, поэтому вызывается сразу
+// после него и до первого app.getPath("userData"). process.exit(0) обязателен: этот файл —
+// composition root, выполняется как top-level модульный код (не обёрнут в функцию), поэтому
+// без немедленного завершения процесса выполнение пойдёт дальше по файлу и всё равно создаст
+// tray/hotkeys в проигравшем процессе.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  process.exit(0);
+}
+
 // Без явного AppUserModelID, совпадающего с appId из electron-builder.yml, Windows
 // иногда молча не показывает toast-уведомления (Notification.show() не бросает ошибку,
 // просто ничего не появляется на экране) — обнаружено вживую: автообновление реально
@@ -53,6 +66,13 @@ if (process.platform === "win32") {
 
 const userDataDir = app.getPath("userData");
 const logger = createFileLogger(join(userDataDir, "logs"));
+
+// Приложение живёт только в трее (нет главного окна для фокуса), поэтому попытку
+// повторного запуска достаточно залогировать — второй процесс уже завершится через
+// process.exit(0) выше до того, как здесь появится смысл что-то показывать пользователю.
+app.on("second-instance", () => {
+  logger.info("Main.secondInstance", "second instance attempted to launch — ignoring (tray-only app)");
+});
 
 const configStore = new JsonConfigStore(userDataDir, logger);
 const secretStore = new ElectronSafeStorage(userDataDir, logger);
